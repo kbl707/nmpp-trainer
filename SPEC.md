@@ -133,6 +133,25 @@ Backward compatibility: unknown-type fallback still applies (old clients
 render `passage` as `open_schema`-like). Existing items without `passage_ref`
 are unaffected.
 
+## 5.2 Printable worksheets
+
+New item type `printable` (non-scored):
+
+```jsonc
+{ "id": "...", "type": "printable", "prompt": "instructions text",
+  "data": { "title": "...", "url": "printables/file.html",
+            "week_note": "optional short line", "instruction": "..." } }
+```
+
+Renders: title, prompt text, `week_note` as a highlighted line, a large
+primary button "Atsispausdinti lapą" that opens `data.url` (relative to the
+site root) in a new tab, and a "Padariau ✔" button that completes the item.
+Non-scored: `answer` null, `correct` null, excluded from `total_autochecked`
+(same as `open_schema`).
+
+`data.url` points at a static file committed under `printables/` in this
+repo, served alongside the app by GitHub Pages.
+
 ## 6. Security / RLS
 
 Single-family app, no auth, but the anon key is public in the page source:

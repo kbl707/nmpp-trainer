@@ -5,7 +5,7 @@ create extension if not exists pgcrypto;
 create table if not exists task_sets (
   id uuid primary key default gen_random_uuid(),
   scheduled_date date not null,
-  subject text not null check (subject in ('matematika','lietuviu')),
+  subject text not null check (subject in ('matematika','lietuviu','pratimai')),
   title text not null,
   items jsonb not null,          -- array of task items, see SPEC.md §5
   phase int not null default 1,  -- 1..3 (prep phases)

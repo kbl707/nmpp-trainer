@@ -11,7 +11,7 @@
   const timerEl = document.getElementById("timer");
 
   const PROGRESS_PREFIX = "nmpp:progress:";
-  const SUBJECT_LABELS = { matematika: "Matematika", lietuviu: "Lietuvių kalba" };
+  const SUBJECT_LABELS = { matematika: "Matematika", lietuviu: "Lietuvių kalba", pratimai: "Pratimai" };
 
   let timerHandle = null;
 
@@ -498,6 +498,31 @@
         { once: true }
       );
       container.appendChild(btn);
+    },
+
+    printable(container, item) {
+      const data = item.data || {};
+      container.innerHTML = `
+        ${data.title ? `<h2 class="passage-title">${escapeHtml(data.title)}</h2>` : ""}
+        <p class="prompt">${escapeHtml(item.prompt || "")}</p>
+        ${data.week_note ? `<p class="week-note">${escapeHtml(data.week_note)}</p>` : ""}
+        ${renderHintBlock(item)}
+      `;
+      wireHint(container, item);
+      const printLink = el(
+        `<a class="btn" href="${escapeHtml(data.url || "#")}" target="_blank" rel="noopener">Atsispausdinti lapą</a>`
+      );
+      container.appendChild(printLink);
+      const doneBtn = el(`<button type="button" class="btn btn-secondary" data-action="done">Padariau ✔</button>`);
+      container.appendChild(doneBtn);
+      doneBtn.addEventListener(
+        "click",
+        () => {
+          finalizeItem(item, null, null);
+          nextItem();
+        },
+        { once: true }
+      );
     },
   };
 

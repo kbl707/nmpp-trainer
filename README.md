@@ -80,6 +80,20 @@ lookup only looks backwards through the array, so a passage must appear
 before the questions that reference it — a missing/forward reference just
 renders the question with no panel, it never breaks the page.
 
+### Printable worksheets (SPEC.md §5.2)
+
+A `printable` item (`{ "type": "printable", "prompt", "data": { "title",
+"url", "week_note", "instruction" } }`) is another non-scored step: title,
+prompt, an optional highlighted `week_note`, a big "Atsispausdinti lapą"
+button that opens `data.url` in a new tab, and "Padariau ✔" to move on.
+`data.url` is a relative path into `printables/`, a folder of static HTML
+worksheets committed alongside the app and served by the same GitHub Pages
+site — e.g. `"printables/ketvirtadienis-akys-ranka-raides.html"`.
+
+The `subject` column also accepts `'pratimai'` (drills/exercises) alongside
+`'matematika'`/`'lietuviu'`, for days that are print-and-do rather than
+either school subject.
+
 ## Notes on behavior
 
 - Only one row of `task_sets` per `(scheduled_date, subject)` — insert with
