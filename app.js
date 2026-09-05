@@ -216,7 +216,60 @@
     screenEl.innerHTML = "";
     const card = el(`<div class="card"></div>`);
     screenEl.appendChild(card);
-    renderer(card, item);
+
+    let target = card;
+    if (item.passage_ref) {
+      const passage = findPassage(item.passage_ref);
+      if (passage) {
+        card.appendChild(buildPassagePanel(passage));
+        target = el(`<div class="question-wrap"></div>`);
+        card.appendChild(target);
+      }
+    }
+    renderer(target, item);
+  }
+
+  // Only looks at items already shown before this one — a passage is meant
+  // to precede the questions that reference it.
+  function findPassage(refId) {
+    for (let i = session.index - 1; i >= 0; i--) {
+      const candidate = session.taskSet.items[i];
+      if (candidate.type === "passage" && candidate.id === refId) return candidate;
+    }
+    return null;
+  }
+
+  function paragraphsHtml(text) {
+    return String(text || "")
+      .split(/\n\n+/)
+      .map((p) => `<p>${escapeHtml(p)}</p>`)
+      .join("");
+  }
+
+  function buildPassagePanel(passage) {
+    const isMobile = window.matchMedia("(max-width: 559px)").matches;
+    let expanded = !isMobile;
+    const panel = el(`
+      <section class="passage-panel" role="region" aria-label="Tekstas">
+        <div class="passage-panel-header">
+          <h2 class="passage-title">${escapeHtml(passage.data.title || "")}</h2>
+          <button type="button" class="passage-toggle" aria-expanded="${expanded}">${
+      expanded ? "Suslėpti tekstą" : "Rodyti tekstą"
+    }</button>
+        </div>
+        <div class="passage-body">${paragraphsHtml(passage.data.text)}</div>
+      </section>
+    `);
+    const body = panel.querySelector(".passage-body");
+    const toggle = panel.querySelector(".passage-toggle");
+    body.hidden = !expanded;
+    toggle.addEventListener("click", () => {
+      expanded = !expanded;
+      body.hidden = !expanded;
+      toggle.setAttribute("aria-expanded", String(expanded));
+      toggle.textContent = expanded ? "Suslėpti tekstą" : "Rodyti tekstą";
+    });
+    return panel;
   }
 
   const RENDERERS = {
@@ -428,6 +481,23 @@
         },
         { once: true }
       );
+    },
+
+    passage(container, item) {
+      container.innerHTML = `
+        <h2 class="passage-title">${escapeHtml((item.data && item.data.title) || "")}</h2>
+        <div class="passage-body standalone">${paragraphsHtml(item.data && item.data.text)}</div>
+      `;
+      const btn = el(`<button type="button" class="btn">Toliau</button>`);
+      btn.addEventListener(
+        "click",
+        () => {
+          finalizeItem(item, null, null);
+          nextItem();
+        },
+        { once: true }
+      );
+      container.appendChild(btn);
     },
   };
 

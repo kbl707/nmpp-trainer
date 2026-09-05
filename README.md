@@ -68,6 +68,18 @@ The item JSON contract (SPEC.md §5) is the stable API between Claude and the
 page: unknown `type` values render as a safe `open_schema`-like fallback, so
 new item types can be introduced without breaking the app.
 
+### Reading passages (SPEC.md §5.1)
+
+A `passage` item (`{ "type": "passage", "data": { "title", "text" } }`) is a
+non-scored, full-card reading step — `\n\n` in `text` becomes a paragraph
+break. Any other item can add `"passage_ref": "<passage id>"` to show that
+passage in a collapsible panel above the question while it's being answered.
+The panel defaults open on desktop/tablet and collapsed on phones (<560px);
+the child can toggle it with "Rodyti tekstą" / "Suslėpti tekstą". Passage
+lookup only looks backwards through the array, so a passage must appear
+before the questions that reference it — a missing/forward reference just
+renders the question with no panel, it never breaks the page.
+
 ## Notes on behavior
 
 - Only one row of `task_sets` per `(scheduled_date, subject)` — insert with

@@ -100,6 +100,39 @@ The renderer must ignore unknown `type` values gracefully (render as
 `open_schema`-like fallback) so Claude can add new types later without breaking
 the page.
 
+## 5.1 Reading passages
+
+New item type `passage` (non-scored):
+
+```jsonc
+{ "id": "p1", "type": "passage",
+  "data": { "title": "Švyturys", "text": "Full passage text..." } }
+```
+
+Renders as a full-card reading step: title, text (max-width ~60ch,
+line-height 1.7, generous paragraph spacing; support "\n\n" as paragraph
+breaks), one "Toliau" button. Records `{ item_id, answer: null, correct: null,
+seconds }` like `open_schema`. Never auto-checked; excluded from
+`total_autochecked`.
+
+Any other item may reference a passage:
+
+```jsonc
+{ "id": "q1", "type": "choice", "passage_ref": "p1", ... }
+```
+
+When an item has `passage_ref`, render the referenced passage in a panel
+ABOVE the question, open by default, with a "Suslėpti tekstą / Rodyti
+tekstą" toggle. The panel must stay visible while answering (sticky within
+the card on tall viewports; simply above the question on small screens). On
+mobile (<560px) default to collapsed with the toggle prominent. Passage
+lookup: search backwards in the items array for the `passage` item with that
+id; if not found, render the question normally (no crash, no panel).
+
+Backward compatibility: unknown-type fallback still applies (old clients
+render `passage` as `open_schema`-like). Existing items without `passage_ref`
+are unaffected.
+
 ## 6. Security / RLS
 
 Single-family app, no auth, but the anon key is public in the page source:

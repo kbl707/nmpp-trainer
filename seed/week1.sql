@@ -29,3 +29,20 @@ values (
 )
 on conflict (scheduled_date, subject) do update
   set title = excluded.title, phase = excluded.phase, items = excluded.items;
+
+-- Same Monday, lietuvių kalba: one seeded example of a reading passage
+-- (SPEC.md §5.1) with two questions referencing it via passage_ref.
+insert into task_sets (scheduled_date, subject, title, phase, items)
+values (
+  '2026-09-07',
+  'lietuviu',
+  'Skaitome kartu',
+  1,
+  '[
+    {"id":"p1","type":"passage","data":{"title":"Švyturys","text":"Ant uolėto kranto stovėjo senas švyturys. Kiekvieną vakarą jo šviesa apsukdavo aplink jūrą, kad laivai nepaklystų tamsoje. Šviesa buvo tokia stipri, kad ją matydavo net iš tolimiausių valčių.\n\nŠvyturio prižiūrėtojas gyveno visai vienas. Kiekvieną rytą jis lipdavo bokšto laiptais aukštyn, valydavo stiklą ir tikrindavo lemputę. Vakare, kai saulė nusileisdavo, švyturys vėl pradėdavo šviesti."}},
+    {"id":"w1-mon-l1","type":"choice","passage_ref":"p1","prompt":"Kur stovėjo švyturys?","data":{"options":["Miške","Ant uolėto kranto","Lauke prie kelio"]},"answer":{"index":1}},
+    {"id":"w1-mon-l2","type":"choice","passage_ref":"p1","prompt":"Ką kiekvieną rytą darydavo prižiūrėtojas?","data":{"options":["Miegodavo visą dieną","Valydavo stiklą ir tikrindavo lemputę","Plaukdavo į jūrą"]},"answer":{"index":1}}
+  ]'::jsonb
+)
+on conflict (scheduled_date, subject) do update
+  set title = excluded.title, phase = excluded.phase, items = excluded.items;

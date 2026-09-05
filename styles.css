@@ -278,6 +278,82 @@ input[type="number"]:focus {
   gap: 16px;
 }
 
+.passage-title {
+  font-size: 21px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.passage-body {
+  max-width: 60ch;
+  line-height: 1.7;
+  margin: 12px auto 0;
+}
+
+.passage-body p {
+  margin: 0 0 16px;
+}
+
+.passage-body p:last-child {
+  margin-bottom: 0;
+}
+
+.passage-panel {
+  border: 2px solid var(--grid-line);
+  border-radius: var(--radius);
+  background: var(--ok-bg);
+  padding: 18px 20px;
+  margin-bottom: 24px;
+  position: sticky;
+  top: 12px;
+}
+
+.passage-panel .passage-body {
+  max-height: 38vh;
+  overflow-y: auto;
+  margin-top: 8px;
+}
+
+.passage-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.passage-toggle {
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 8px 14px;
+  min-height: 40px;
+  border-radius: 8px;
+  border: 2px solid var(--accent);
+  background: var(--paper);
+  color: var(--accent);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.passage-body.standalone {
+  text-align: left;
+}
+
+@media (max-width: 559px) {
+  .passage-panel {
+    position: static;
+    top: auto;
+  }
+  .passage-panel .passage-body {
+    max-height: none;
+  }
+  .passage-toggle {
+    font-size: 16px;
+    padding: 12px 16px;
+  }
+}
+
 @media (max-width: 480px) {
   body { font-size: 18px; }
   .prompt { font-size: 22px; }
