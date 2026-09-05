@@ -404,7 +404,7 @@
       container.innerHTML = `
         <p class="prompt">${escapeHtml(text)}</p>
         ${instruction ? `<p class="instruction">${escapeHtml(instruction)}</p>` : ""}
-        ${hasNumericAnswer ? `<input type="number" inputmode="numeric" placeholder="Atsakymas" />` : ""}
+        ${hasNumericAnswer ? `<input type="number" inputmode="numeric" placeholder="Atsakymas" aria-label="Atsakymas" />` : ""}
         <button type="button" class="btn" data-action="done">Padariau ✔</button>
         ${renderHintBlock(item)}
       `;
@@ -434,7 +434,7 @@
   function renderNumericItem(container, item, promptText) {
     container.innerHTML = `
       <p class="prompt">${escapeHtml(promptText)}</p>
-      <input type="number" inputmode="numeric" autocomplete="off" />
+      <input type="number" inputmode="numeric" autocomplete="off" aria-label="Atsakymas" />
       <button type="button" class="btn" data-action="check">Tikrinti</button>
       <p class="retry-msg" hidden>Pabandyk dar kartą</p>
       ${renderHintBlock(item)}
