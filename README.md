@@ -15,6 +15,18 @@ for the full design. This file covers setup and the weekly Claude feedback loop.
 - Claude (via the Supabase MCP connector, from chat) reads `results` and
   writes new `task_sets` rows for future days — no code changes needed.
 
+## Pages
+
+This repo's GitHub Pages site serves more than the trainer app:
+
+- `/` — the daily trainer (this app)
+- `/h` — weekly school timetable, kid 1
+- `/l` — weekly school timetable, kid 2
+- `/printables/` — static worksheets linked from `printable` task items
+
+`/h` and `/l` are self-contained HTML pages maintained by a generator outside
+this repo — committed as-is, not modified or linted here.
+
 ## One-time setup (already done for this deployment)
 
 1. Create a Supabase project and apply the schema:
