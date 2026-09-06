@@ -1,3 +1,4 @@
+-- Historical bootstrap only — the live Supabase DB is the source of truth from here on; this file is not kept in sync with it.
 -- Seed: week 1, Monday, matematika (see SPEC.md §10)
 -- scheduled_date is the Monday this was first deployed for (2026-09-07).
 -- To reseed for a different Monday, change scheduled_date below.
