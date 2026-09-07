@@ -216,13 +216,16 @@ a.btn {
   font-family: inherit;
   font-size: 19px;
   padding: 14px;
-  min-height: 52px;
+  min-height: 56px;
   border-radius: 10px;
   border: 2px solid var(--grid-line);
   background: var(--paper);
   color: var(--ink);
   cursor: pointer;
   text-align: center;
+  width: 100%;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .match-item.selected {
@@ -230,8 +233,59 @@ a.btn {
   background: var(--ok-bg);
 }
 
-.match-item.paired {
-  opacity: 0.55;
+.paired-section {
+  margin-top: 20px;
+}
+
+.paired-title {
+  font-weight: 700;
+  font-size: 17px;
+  margin-bottom: 10px;
+}
+
+.paired-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 44px;
+  gap: 8px;
+  align-items: stretch;
+  margin-bottom: 10px;
+}
+
+.match-item.paired-tile {
+  cursor: default;
+  border-color: var(--accent);
+  background: var(--ok-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.pair-badge {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pair-undo {
+  font-family: inherit;
+  min-height: 56px;
+  min-width: 44px;
+  border-radius: 10px;
+  border: 2px solid var(--accent);
+  background: var(--paper);
+  color: var(--accent);
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .retry-msg {
@@ -376,4 +430,13 @@ a.btn {
   body { font-size: 18px; }
   .prompt { font-size: 22px; }
   .match-cols { gap: 10px; }
+  .paired-row {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 6px 8px;
+  }
+  .pair-undo {
+    grid-column: 1 / span 2;
+    min-height: 44px;
+  }
 }

@@ -362,71 +362,87 @@
           <div class="match-col" data-side="left"></div>
           <div class="match-col" data-side="right"></div>
         </div>
+        <div class="paired-section" hidden>
+          <p class="paired-title">Sujungta</p>
+          <div class="paired-list"></div>
+        </div>
+        <button type="button" class="btn" data-action="check" disabled>Tikrinti</button>
         <p class="retry-msg" hidden>Pabandyk dar kartą</p>
         ${renderHintBlock(item)}
       `;
       const leftCol = container.querySelector('[data-side="left"]');
       const rightCol = container.querySelector('[data-side="right"]');
+      const pairedSection = container.querySelector(".paired-section");
+      const pairedList = container.querySelector(".paired-list");
+      const checkBtn = container.querySelector('[data-action="check"]');
       const retryMsg = container.querySelector(".retry-msg");
       wireHint(container, item);
 
-      let pairs = []; // [[leftIdx, rightIdx], ...]
+      let pairs = []; // [[leftIdx, rightIdx], ...] in the order they were made
       let pendingLeft = null;
 
-      left.forEach((text, idx) => {
-        const b = el(`<button type="button" class="match-item">${escapeHtml(text)}</button>`);
-        b.dataset.idx = idx;
-        b.addEventListener("click", () => onLeftClick(idx, b));
-        leftCol.appendChild(b);
-      });
-      right.forEach((text, idx) => {
-        const b = el(`<button type="button" class="match-item">${escapeHtml(text)}</button>`);
-        b.dataset.idx = idx;
-        b.addEventListener("click", () => onRightClick(idx, b));
-        rightCol.appendChild(b);
-      });
+      function render() {
+        const pairedLeft = new Set(pairs.map((p) => p[0]));
+        const pairedRight = new Set(pairs.map((p) => p[1]));
 
-      function leftButtons() { return Array.from(leftCol.children); }
-      function rightButtons() { return Array.from(rightCol.children); }
-
-      function refreshUI() {
-        leftButtons().forEach((b) => {
-          const idx = Number(b.dataset.idx);
-          const isPaired = pairs.some((p) => p[0] === idx);
-          b.classList.toggle("paired", isPaired);
+        leftCol.innerHTML = "";
+        left.forEach((text, idx) => {
+          if (pairedLeft.has(idx)) return;
+          const b = el(`<button type="button" class="match-item">${escapeHtml(text)}</button>`);
           b.classList.toggle("selected", pendingLeft === idx);
+          b.addEventListener("click", () => onLeftClick(idx));
+          leftCol.appendChild(b);
         });
-        rightButtons().forEach((b) => {
-          const idx = Number(b.dataset.idx);
-          const isPaired = pairs.some((p) => p[1] === idx);
-          b.classList.toggle("paired", isPaired);
+
+        rightCol.innerHTML = "";
+        right.forEach((text, idx) => {
+          if (pairedRight.has(idx)) return;
+          const b = el(`<button type="button" class="match-item">${escapeHtml(text)}</button>`);
+          b.addEventListener("click", () => onRightClick(idx));
+          rightCol.appendChild(b);
         });
-        if (pairs.length === left.length && !container.querySelector(".btn:not(.btn-secondary)")) {
-          const checkBtn = el(`<button type="button" class="btn">Tikrinti</button>`);
-          checkBtn.addEventListener("click", checkPairs, { once: true });
-          container.appendChild(checkBtn);
-        }
+
+        pairedSection.hidden = pairs.length === 0;
+        pairedList.innerHTML = "";
+        pairs.forEach(([lIdx, rIdx], i) => {
+          const n = i + 1;
+          const row = el(`
+            <div class="paired-row">
+              <div class="match-item paired-tile"><span class="pair-badge">${n}</span>${escapeHtml(left[lIdx])}</div>
+              <div class="match-item paired-tile"><span class="pair-badge">${n}</span>${escapeHtml(right[rIdx])}</div>
+              <button type="button" class="pair-undo" aria-label="Anuliuoti ${n} porą">✕</button>
+            </div>
+          `);
+          row.querySelector(".pair-undo").addEventListener("click", () => onUndo(lIdx, rIdx));
+          pairedList.appendChild(row);
+        });
+
+        checkBtn.disabled = pairs.length !== left.length;
       }
 
-      function onLeftClick(idx, btn) {
-        if (btn.classList.contains("paired")) {
-          pairs = pairs.filter((p) => p[0] !== idx);
-          pendingLeft = null;
-          const existingCheckBtn = container.querySelector(".btn");
-          if (existingCheckBtn) existingCheckBtn.remove();
-          refreshUI();
-          return;
-        }
-        pendingLeft = idx;
-        refreshUI();
+      function onLeftClick(idx) {
+        pendingLeft = pendingLeft === idx ? null : idx;
+        render();
       }
 
-      function onRightClick(idx, btn) {
-        if (btn.classList.contains("paired") || pendingLeft === null) return;
+      function onRightClick(idx) {
+        if (pendingLeft === null) return;
         pairs.push([pendingLeft, idx]);
         pendingLeft = null;
-        refreshUI();
+        render();
       }
+
+      function onUndo(lIdx, rIdx) {
+        pairs = pairs.filter((p) => !(p[0] === lIdx && p[1] === rIdx));
+        render();
+      }
+
+      function disableAll() {
+        container.querySelectorAll("button").forEach((b) => (b.disabled = true));
+      }
+
+      checkBtn.addEventListener("click", checkPairs);
+      render();
 
       function checkPairs() {
         session.attempt += 1;
@@ -435,17 +451,15 @@
         const gotSet = new Set(pairs.map((p) => p[0] + ":" + p[1]));
         const isCorrect =
           wantedSet.size === gotSet.size && [...wantedSet].every((p) => gotSet.has(p));
-        leftButtons().concat(rightButtons()).forEach((b) => (b.disabled = true));
         if (isCorrect || session.attempt >= 2) {
+          disableAll();
           finalizeItem(item, { pairs }, !!isCorrect);
           showRetryThenAdvanceControls(container, nextItem);
         } else {
           retryMsg.hidden = false;
           pairs = [];
-          leftButtons().concat(rightButtons()).forEach((b) => {
-            b.disabled = false;
-            b.classList.remove("paired", "selected");
-          });
+          pendingLeft = null;
+          render();
         }
       }
     },
@@ -530,8 +544,8 @@
     container.innerHTML = `
       <p class="prompt">${escapeHtml(promptText)}</p>
       <input type="number" inputmode="numeric" autocomplete="off" aria-label="Atsakymas" />
-      <button type="button" class="btn" data-action="check">Tikrinti</button>
-      <p class="retry-msg" hidden>Pabandyk dar kartą</p>
+      <button type="button" class="btn" data-action="check" disabled>Tikrinti</button>
+      <p class="retry-msg" hidden></p>
       ${renderHintBlock(item)}
     `;
     wireHint(container, item);
@@ -540,19 +554,31 @@
     const retryMsg = container.querySelector(".retry-msg");
     input.focus();
 
+    input.addEventListener("input", () => {
+      checkBtn.disabled = input.value.trim() === "";
+      if (input.value.trim() !== "") retryMsg.hidden = true;
+    });
+
     function check() {
-      session.attempt += 1;
       const raw = input.value.trim();
+      if (raw === "") {
+        retryMsg.textContent = "Įrašyk atsakymą";
+        retryMsg.hidden = false;
+        return;
+      }
+      session.attempt += 1;
       const val = Number(raw);
-      const isCorrect = raw !== "" && !Number.isNaN(val) && val === item.answer.value;
+      const isCorrect = !Number.isNaN(val) && val === item.answer.value;
       if (isCorrect || session.attempt >= 2) {
         input.disabled = true;
         checkBtn.remove();
         finalizeItem(item, { value: Number.isNaN(val) ? raw : val }, !!isCorrect);
         showRetryThenAdvanceControls(container, nextItem);
       } else {
+        retryMsg.textContent = "Pabandyk dar kartą";
         retryMsg.hidden = false;
         input.value = "";
+        checkBtn.disabled = true;
         input.focus();
       }
     }
