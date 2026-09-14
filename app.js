@@ -9,11 +9,24 @@
   const progressFillEl = document.getElementById("progress-fill");
   const progressLabelEl = document.getElementById("progress-label");
   const timerEl = document.getElementById("timer");
+  const starsBadgeEl = document.getElementById("stars-badge");
+  const soundToggleEl = document.getElementById("sound-toggle");
+  const praiseToastEl = document.getElementById("praise-toast");
 
   const PROGRESS_PREFIX = "nmpp:progress:";
   const SUBJECT_LABELS = { matematika: "Matematika", lietuviu: "Lietuvių kalba", pratimai: "Pratimai" };
+  const PRAISE_WORDS = ["Puiku!", "Taip!", "Šaunu!", "Tiksliai!"];
+  const SOUND_KEY = "nmpp:sound-on";
+  const BADGES = {
+    pirma_savaite: { emoji: "🌟", label: "Pirma savaitė" },
+    daugybos_meistras: { emoji: "🧮", label: "Daugybos meistras" },
+    be_klaidu: { emoji: "🎯", label: "Be klaidų" },
+    savaites_ugnis: { emoji: "🔥", label: "Savaitės ugnis" },
+  };
 
   let timerHandle = null;
+  let praiseToastTimer = null;
+  let soundOn = false;
 
   function todayStr() {
     const d = new Date();
@@ -42,6 +55,82 @@
     const wrap = document.createElement("div");
     wrap.innerHTML = html.trim();
     return wrap.firstElementChild;
+  }
+
+  // ---- rewards (SPEC.md §7.1) --------------------------------------------
+
+  function updateStarsBadge(total) {
+    starsBadgeEl.textContent = `⭐ ${total}`;
+    starsBadgeEl.hidden = false;
+  }
+
+  function showPraiseToast(stars) {
+    const word = PRAISE_WORDS[Math.floor(Math.random() * PRAISE_WORDS.length)];
+    praiseToastEl.textContent = `✅ ${word}`;
+    praiseToastEl.hidden = false;
+    praiseToastEl.classList.remove("show");
+    // restart the CSS animation even if a toast is already mid-fade
+    void praiseToastEl.offsetWidth;
+    praiseToastEl.classList.add("show");
+    if (praiseToastTimer) clearTimeout(praiseToastTimer);
+    praiseToastTimer = setTimeout(() => {
+      praiseToastEl.classList.remove("show");
+      praiseToastEl.hidden = true;
+    }, 800);
+  }
+
+  function loadSoundPref() {
+    try {
+      soundOn = localStorage.getItem(SOUND_KEY) === "1";
+    } catch (e) {
+      soundOn = false;
+    }
+    reflectSoundToggle();
+  }
+
+  function reflectSoundToggle() {
+    soundToggleEl.textContent = soundOn ? "🔈" : "🔇";
+    soundToggleEl.setAttribute("aria-pressed", String(soundOn));
+    soundToggleEl.setAttribute("aria-label", soundOn ? "Garsas įjungtas" : "Garsas išjungtas");
+  }
+
+  soundToggleEl.addEventListener("click", () => {
+    soundOn = !soundOn;
+    try {
+      localStorage.setItem(SOUND_KEY, soundOn ? "1" : "0");
+    } catch (e) {}
+    reflectSoundToggle();
+  });
+
+  function playChime() {
+    if (!soundOn) return;
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      const ctx = new Ctx();
+      const now = ctx.currentTime;
+      [523.25, 659.25].forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0, now + i * 0.12);
+        gain.gain.linearRampToValueAtTime(0.15, now + i * 0.12 + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.5);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(now + i * 0.12);
+        osc.stop(now + i * 0.12 + 0.55);
+      });
+    } catch (e) {}
+  }
+
+  function renderConfetti(container) {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const burst = el(`<div class="confetti" aria-hidden="true"></div>`);
+    for (let i = 0; i < 16; i++) {
+      burst.appendChild(el(`<span class="confetti-piece"></span>`));
+    }
+    container.appendChild(burst);
+    setTimeout(() => burst.remove(), 1500);
   }
 
   // ---- localStorage progress -------------------------------------------
@@ -181,13 +270,16 @@
 
   function finalizeItem(item, answerValue, correct) {
     const seconds = Math.round((Date.now() - session.itemStartMs) / 1000);
+    const stars = correct ? (session.attempt <= 1 ? 2 : 1) : 0;
     session.answers.push({
       item_id: item.id,
       answer: answerValue,
       correct: correct,
       seconds,
+      stars,
     });
     persistSession();
+    if (stars > 0) showPraiseToast(stars);
   }
 
   function showRetryThenAdvanceControls(container, onAdvance) {
@@ -627,6 +719,7 @@
     const duration_seconds = Math.round((Date.now() - session.sessionStartMs) / 1000);
     const correct_count = session.answers.filter((a) => a.correct === true).length;
     const total_autochecked = session.answers.filter((a) => a.correct !== null).length;
+    const setStars = session.answers.reduce((sum, a) => sum + (a.stars || 0), 0);
 
     try {
       await client.from("results").insert({
@@ -642,14 +735,48 @@
     }
     clearProgress(session.taskSet.id);
 
+    let reward = null;
+    try {
+      const { data, error } = await client.rpc("add_stars", {
+        p_set_id: session.taskSet.id,
+        p_stars: setStars,
+      });
+      if (error) throw error;
+      reward = Array.isArray(data) ? data[0] : data;
+    } catch (e) {
+      /* progress/streak/badges are a bonus — a failure here shouldn't block the finish screen */
+    }
+
     screenEl.innerHTML = `
       <div class="end-screen">
         <div class="star">⭐</div>
         <p class="end-title">Šiandien — atlikta!</p>
         <p class="end-score">Teisingai: ${correct_count} iš ${total_autochecked}</p>
+        <p class="end-stars">⭐ +${setStars}</p>
+        ${reward && reward.streak >= 1 ? `<p class="end-streak">🔥 ${reward.streak} dienos iš eilės</p>` : ""}
       </div>
     `;
     topbarEl.hidden = true;
+
+    const endScreen = screenEl.querySelector(".end-screen");
+    if (setStars > 0) renderConfetti(endScreen);
+    playChime();
+
+    if (reward) {
+      updateStarsBadge(reward.total_stars);
+      const newBadges = reward.new_badges || [];
+      if (newBadges.length > 0) {
+        const badgesWrap = el(`<div class="new-badges"></div>`);
+        newBadges.forEach((key) => {
+          const b = BADGES[key];
+          if (!b) return;
+          badgesWrap.appendChild(
+            el(`<p class="new-badge">${b.emoji} Naujas ženkliukas: ${escapeHtml(b.label)}!</p>`)
+          );
+        });
+        endScreen.appendChild(badgesWrap);
+      }
+    }
   }
 
   // ---- boot ---------------------------------------------------------------
@@ -674,7 +801,19 @@
     });
   }
 
+  async function loadStarsBadge() {
+    try {
+      const { data, error } = await client.from("progress").select("total_stars").eq("id", 1).single();
+      if (error) throw error;
+      if (data) updateStarsBadge(data.total_stars);
+    } catch (e) {
+      /* badge just won't show a number yet — non-critical */
+    }
+  }
+
   async function init() {
+    loadSoundPref();
+    loadStarsBadge();
     const today = todayStr();
     let taskSets = [];
     try {

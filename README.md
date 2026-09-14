@@ -106,6 +106,17 @@ The `subject` column also accepts `'pratimai'` (drills/exercises) alongside
 `'matematika'`/`'lietuviu'`, for days that are print-and-do rather than
 either school subject.
 
+### Rewards (SPEC.md §7.1)
+
+Light gamification on top of the existing scoring, all opt-out-proof by
+design (no sound by default, motion respects `prefers-reduced-motion`,
+wrong answers never show a star count). Lifetime state lives in a
+single-row `progress` table, writable only through the `add_stars(set_id,
+stars)` RPC — it recomputes the stars to credit from the just-inserted
+`results` row itself rather than trusting its own argument, and guards
+against being called twice via `results.stars_credited`. The header's `⭐
+{n}` badge reads `progress` directly (anon `select` only).
+
 ## Notes on behavior
 
 - Only one row of `task_sets` per `(scheduled_date, subject)` — insert with

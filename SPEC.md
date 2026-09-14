@@ -160,6 +160,8 @@ Single-family app, no auth, but the anon key is public in the page source:
   `scheduled_date <= current_date + 1` (no peeking far ahead, allows timezone slack).
   No insert/update/delete for anon.
 - `results`: anon may `insert` only. No select/update/delete for anon.
+- `progress`: anon may `select` only. Writes only happen through the
+  `add_stars` RPC (see §7.1), never directly.
 - All writes of `task_sets` and reads of `results` happen through the Supabase
   MCP / dashboard (service role) — i.e., by parent/Claude, never by the page.
 
@@ -171,7 +173,8 @@ Single-family app, no auth, but the anon key is public in the page source:
   ink `#21242b`, single accent `#1d5fad` (school-ink blue). Matches existing
   printed materials.
 - **One task visible at a time**, big „Toliau“ button; progress shown as
-  `3 / 7` plus a thin progress bar. Minimal decoration, no animations, no sound.
+  `3 / 7` plus a thin progress bar. Minimal decoration overall — the only
+  animation/sound is the brief, optional reward feedback in §7.1.
 - First and last items of a set should be easy (the parent/Claude curates this;
   the app just renders in array order — do not shuffle).
 - A visible but calm elapsed-time indicator (no countdown pressure), used to
@@ -192,6 +195,59 @@ Single-family app, no auth, but the anon key is public in the page source:
 - Hint: `Užuomina`
 - Finish screen: `Šiandien — atlikta!` / `Teisingai: {n} iš {m}`
 - Compare buttons: `<` `>` `=`
+
+## 7.1 Rewards
+
+Light gamification, kept calm and non-punishing — nothing here changes how
+an item is checked or scored; it only adds positive feedback on top.
+
+**Per-answer praise.** When an auto-checked or self-marked item is recorded
+correct, show a brief green check + one random short Lithuanian praise word
+(`Puiku!`, `Taip!`, `Šaunu!`, `Tiksliai!`) for ~800ms. No sound here, ever
+(that's reserved for set completion, and only if the sound toggle is on).
+Stars per item: first-try correct → 2 ⭐, correct after the one retry → 1 ⭐.
+Wrong answers never show a star count or a 0 — same "no harsh feedback"
+rule as everywhere else in the app.
+
+**End screen.** Adds, alongside the existing star + „Šiandien — atlikta!“ +
+`Teisingai: {n} iš {m}`:
+- total ⭐ earned in this set,
+- a short CSS-only confetti burst (≤1.5s, skipped under
+  `prefers-reduced-motion: reduce`),
+- a streak line `🔥 {n} dienos iš eilės` — consecutive *scheduled* days
+  (i.e. days that had a `task_sets` row) with at least one completed set,
+  walking back from today; a day with no task_set at all is simply skipped,
+  not counted as a break,
+- any badge newly earned in this set (see below).
+
+**Persistent progress.** A single-row `progress` table holds lifetime
+`total_stars`, `streak`, and `badges` (jsonb array of badge keys). Anon may
+only `select` it — the only way to change it is the `add_stars(set_id,
+stars)` RPC, called once per completed set right after the `results`
+insert. The RPC is `security definer` so it can read `results`/write
+`progress` despite anon's normal RLS, but it never trusts its `stars`
+argument blindly: it looks up the matching `results` row, recomputes the
+stars to credit from that row's own stored `answers[].stars`, and guards
+against being called twice for the same set via `results.stars_credited`.
+It also recomputes the streak and checks badge thresholds itself, so a
+client can't forge either. A small header badge `⭐ 142` (the lifetime
+total) shows on every page load, updated in place after each completion.
+
+**Badges** (Lithuanian names, simple emoji, stored by key in
+`progress.badges`, shown once on the end screen the set they're first
+earned):
+
+| key | name | condition |
+|---|---|---|
+| `pirma_savaite` | 🌟 Pirma savaitė | 5 completed sets, lifetime |
+| `daugybos_meistras` | 🧮 Daugybos meistras | 20 correct `quick_math` answers, each under 5s, lifetime |
+| `be_klaidu` | 🎯 Be klaidų | any one set with 100% of its auto-checked items correct |
+| `savaites_ugnis` | 🔥 Savaitės ugnis | streak reaches 5 |
+
+**Sound.** Off by default; a small toggle in the header persists the
+preference to `localStorage`. When on, a single soft chime (generated with
+the Web Audio API, no audio asset) plays once, on set completion only —
+never on a per-item praise.
 
 ## 8. Pages / routes
 

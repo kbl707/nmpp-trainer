@@ -11,6 +11,11 @@
 </head>
 <body>
   <div id="app" aria-live="polite">
+    <div id="app-header">
+      <span id="stars-badge" hidden>⭐ 0</span>
+      <button type="button" id="sound-toggle" aria-pressed="false" aria-label="Garsas išjungtas">🔇</button>
+    </div>
+    <div id="praise-toast" aria-live="polite" hidden></div>
     <div id="topbar" hidden>
       <div id="progress-track"><div id="progress-fill"></div></div>
       <div id="topbar-row">
