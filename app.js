@@ -94,34 +94,67 @@
     soundToggleEl.setAttribute("aria-label", soundOn ? "Garsas įjungtas" : "Garsas išjungtas");
   }
 
+  // One shared AudioContext. Browsers only let it run if it is created or
+  // resumed inside a user gesture, so every tap/keypress calls ensureAudio()
+  // — later sounds (which fire after network awaits) then just play.
+  let audioCtx = null;
+
+  function ensureAudio() {
+    if (!soundOn) return null;
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return null;
+      if (!audioCtx) audioCtx = new Ctx();
+      if (audioCtx.state === "suspended") audioCtx.resume();
+      return audioCtx;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  ["pointerdown", "keydown", "touchend"].forEach((ev) =>
+    document.addEventListener(ev, () => ensureAudio(), { passive: true })
+  );
+
+  function tone(ctx, freq, start, dur, peak) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.linearRampToValueAtTime(peak, start + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(start);
+    osc.stop(start + dur + 0.02);
+  }
+
+  // Softer single tick for each correct answer.
+  function playTick() {
+    const ctx = ensureAudio();
+    if (!ctx) return;
+    tone(ctx, 1046.5, ctx.currentTime + 0.005, 0.07, 0.05);
+  }
+
+  // Set completion: two ascending notes (C5 → G5), ~400ms in total.
+  function playChime() {
+    const ctx = ensureAudio();
+    if (!ctx) return;
+    const t = ctx.currentTime + 0.02;
+    tone(ctx, 523.25, t, 0.24, 0.16);
+    tone(ctx, 783.99, t + 0.16, 0.24, 0.16);
+  }
+
   soundToggleEl.addEventListener("click", () => {
     soundOn = !soundOn;
     try {
       localStorage.setItem(SOUND_KEY, soundOn ? "1" : "0");
     } catch (e) {}
     reflectSoundToggle();
+    // Created inside this click, so it is allowed to run; the tick confirms
+    // to the child that sound is now on.
+    if (soundOn) playTick();
   });
-
-  function playChime() {
-    if (!soundOn) return;
-    try {
-      const Ctx = window.AudioContext || window.webkitAudioContext;
-      const ctx = new Ctx();
-      const now = ctx.currentTime;
-      [523.25, 659.25].forEach((freq, i) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = "sine";
-        osc.frequency.value = freq;
-        gain.gain.setValueAtTime(0, now + i * 0.12);
-        gain.gain.linearRampToValueAtTime(0.15, now + i * 0.12 + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.5);
-        osc.connect(gain).connect(ctx.destination);
-        osc.start(now + i * 0.12);
-        osc.stop(now + i * 0.12 + 0.55);
-      });
-    } catch (e) {}
-  }
 
   function renderConfetti(container) {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -280,6 +313,7 @@
     });
     persistSession();
     if (stars > 0) showPraiseToast(stars);
+    if (correct === true) playTick();
   }
 
   // One "Toliau" press per attempt. Correct → record and advance at once.
@@ -799,6 +833,13 @@
         endScreen.appendChild(badgesWrap);
       }
     }
+
+    // Plain outbound link to a Spotify search — nothing is embedded or bundled.
+    endScreen.appendChild(
+      el(
+        `<a class="btn btn-secondary" href="https://open.spotify.com/search/Scoop%20Conor%20Price%20Nic%20D" target="_blank" rel="noopener">🎵 Švęsk su Scoop</a>`
+      )
+    );
   }
 
   // ---- boot ---------------------------------------------------------------

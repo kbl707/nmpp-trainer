@@ -214,8 +214,8 @@ an item is checked or scored; it only adds positive feedback on top.
 
 **Per-answer praise.** When an auto-checked or self-marked item is recorded
 correct, show a brief green check + one random short Lithuanian praise word
-(`Puiku!`, `Taip!`, `Šaunu!`, `Tiksliai!`) for ~800ms. No sound here, ever
-(that's reserved for set completion, and only if the sound toggle is on).
+(`Puiku!`, `Taip!`, `Šaunu!`, `Tiksliai!`) for ~800ms. No sound unless the
+header sound toggle is on (see **Sound** below).
 Stars per item: first-try correct → 2 ⭐, correct after the one retry → 1 ⭐.
 Wrong answers never show a star count or a 0 — same "no harsh feedback"
 rule as everywhere else in the app.
@@ -256,9 +256,18 @@ earned):
 | `savaites_ugnis` | 🔥 Savaitės ugnis | streak reaches 5 |
 
 **Sound.** Off by default; a small toggle in the header persists the
-preference to `localStorage`. When on, a single soft chime (generated with
-the Web Audio API, no audio asset) plays once, on set completion only —
-never on a per-item praise.
+preference to `localStorage`. When on: a softer single tick on each correct
+answer, and on set completion a short chime — two ascending notes
+(C5 → G5), ~400ms. Both are generated with the Web Audio API (no audio
+file, nothing bundled). Browsers only allow audio that starts from a user
+gesture, so one shared `AudioContext` is created/resumed on the child's own
+taps and keypresses (and turning the toggle on plays a confirming tick);
+the completion chime fires after the async save, which is why the context
+must already be running by then.
+
+**Celebrate link.** The end screen has a „🎵 Švęsk su Scoop“ button that
+opens a Spotify *search* URL in a new tab. It is a plain outbound link —
+no copyrighted audio is embedded or bundled.
 
 ## 8. Pages / routes
 
