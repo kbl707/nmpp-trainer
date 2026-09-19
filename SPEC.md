@@ -162,6 +162,7 @@ Single-family app, no auth, but the anon key is public in the page source:
 - `results`: anon may `insert` only. No select/update/delete for anon.
 - `progress`: anon may `select` only. Writes only happen through the
   `record_progress` RPC (see §7.1), never directly.
+- `weekly_stats()` (§7.2) is executable by anon but returns aggregates only.
 - All writes of `task_sets` and reads of `results` happen through the Supabase
   MCP / dashboard (service role) — i.e., by parent/Claude, never by the page.
 
@@ -273,6 +274,38 @@ must already be running by then.
 **Celebrate link.** The end screen has a „🎵 Švęsk su Scoop“ button that
 opens a Spotify *search* URL in a new tab. It is a plain outbound link —
 no copyrighted audio is embedded or bundled.
+
+## 7.2 Weekly stats (Saturday end screen)
+
+`weekly_stats()` is a `security definer` RPC (anon may execute it) that
+returns **aggregates only** for the last 7 Vilnius-local days — never raw
+answers, item ids or per-item data. It counts completed (`interrupted =
+false`) sets whose `scheduled_date` falls in the window, and only
+auto-checked answers (`correct` is a boolean) count as "items". It returns
+one jsonb object:
+
+| key | meaning |
+|---|---|
+| `sets_completed` | completed sets in the window |
+| `total_items`, `correct_items`, `accuracy_pct` | auto-checked items, how many were right, rounded % (null if none) |
+| `avg_seconds_per_item` | mean seconds over those items |
+| `stars_earned` | stars in the window, clamped like §7.1 (1–2 per correct answer) |
+| `best_day` | `{date, dow, accuracy_pct, total}` — highest accuracy (ties: more items) |
+| `fastest_day` | `{date, dow, avg_seconds}` — lowest mean seconds per item, preferring days with ≥5 items |
+| `by_type` | `[{type, total, correct, accuracy_pct}]`, most items first |
+| `by_day` | `[{date, dow, total, correct, accuracy_pct, avg_seconds}]`, `dow` is ISO 1=Mon…7=Sun |
+
+**Card.** When the completed set's `scheduled_date` is a Saturday, the end
+screen also shows a „Tavo savaitė“ card (fetched alongside
+`record_progress`; if it fails or there is no data, the card is simply
+omitted). Child-friendly Lithuanian, e.g. `Išsprendei 112 užduočių`,
+`Teisingai — 81 %`, `Greičiausia diena — trečiadienis` (merged with
+`Tiksliausia diena` when they are the same day), average seconds per item,
+the week's stars, and accuracy per item type. Plus a plain inline-SVG bar
+chart (no library) of items solved per day, one bar per school day
+**Pr–Še** (Mon–Sat, six bars), with `role="img"` and an `aria-label` that
+spells out the numbers. Noun forms follow Lithuanian number agreement
+(1 užduotį / 2–9 užduotis / 10–19, 20… užduočių).
 
 ## 8. Pages / routes
 

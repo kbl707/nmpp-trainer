@@ -199,3 +199,84 @@ as $$
 $$;
 
 grant execute on function add_stars(uuid, int) to anon;
+
+-- weekly_stats: aggregates only for the last 7 Vilnius-local days (SPEC.md §7.2).
+-- Security definer so it can read results, but it never returns raw answers.
+create or replace function weekly_stats()
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  with today as (select (now() at time zone 'Europe/Vilnius')::date as d),
+  done as (
+    select r.id as result_id, t.scheduled_date, r.answers, t.items
+    from results r
+    join task_sets t on t.id = r.task_set_id
+    cross join today
+    where r.interrupted = false
+      and t.scheduled_date between today.d - 6 and today.d
+  ),
+  ans as (
+    select d.result_id, d.scheduled_date, a.value as a,
+      (select i->>'type' from jsonb_array_elements(d.items) i
+        where i->>'id' = a.value->>'item_id' limit 1) as itype
+    from done d
+    cross join lateral jsonb_array_elements(d.answers) a
+  ),
+  scored as (
+    select scheduled_date, itype,
+      (a->>'correct')::boolean as ok,
+      coalesce((a->>'seconds')::numeric, 0) as secs
+    from ans
+    where jsonb_typeof(a->'correct') = 'boolean'
+  ),
+  stars as (
+    select coalesce(sum(
+      case when (a->>'correct')::boolean is true
+           then least(greatest(coalesce((a->>'stars')::int, 0), 0), 2)
+           else 0 end
+    ), 0)::int as n
+    from ans
+  ),
+  by_day as (
+    select scheduled_date,
+      extract(isodow from scheduled_date)::int as dow,
+      count(*)::int as total,
+      (count(*) filter (where ok))::int as correct,
+      round(100.0 * count(*) filter (where ok) / count(*))::int as accuracy_pct,
+      round(avg(secs), 1) as avg_seconds
+    from scored
+    group by scheduled_date
+  ),
+  by_type as (
+    select itype as type,
+      count(*)::int as total,
+      (count(*) filter (where ok))::int as correct,
+      round(100.0 * count(*) filter (where ok) / count(*))::int as accuracy_pct
+    from scored
+    where itype is not null
+    group by itype
+  )
+  select jsonb_build_object(
+    'sets_completed', (select count(*) from done),
+    'total_items', (select count(*) from scored),
+    'correct_items', (select count(*) from scored where ok),
+    'accuracy_pct', (select round(100.0 * count(*) filter (where ok) / nullif(count(*), 0))::int from scored),
+    'avg_seconds_per_item', (select round(avg(secs), 1) from scored),
+    'stars_earned', (select n from stars),
+    'best_day', (select to_jsonb(b) from (
+        select scheduled_date as date, dow, accuracy_pct, total
+        from by_day order by accuracy_pct desc, total desc limit 1) b),
+    'fastest_day', (select to_jsonb(f) from (
+        select scheduled_date as date, dow, avg_seconds
+        from by_day order by (total >= 5) desc, avg_seconds asc limit 1) f),
+    'by_type', coalesce((select jsonb_agg(to_jsonb(t) order by t.total desc) from by_type t), '[]'::jsonb),
+    'by_day', coalesce((select jsonb_agg(jsonb_build_object(
+        'date', scheduled_date, 'dow', dow, 'total', total, 'correct', correct,
+        'accuracy_pct', accuracy_pct, 'avg_seconds', avg_seconds) order by scheduled_date) from by_day), '[]'::jsonb)
+  );
+$$;
+
+grant execute on function weekly_stats() to anon;

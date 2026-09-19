@@ -118,6 +118,14 @@ client, and guards against being called twice via `results.stars_credited`.
 The header's `⭐ {n}` badge reads `progress` directly (anon `select` only).
 (`add_stars` is kept as a wrapper for older clients.)
 
+### Weekly stats (SPEC.md §7.2)
+
+`weekly_stats()` is a `security definer` RPC that anon can run but which only
+ever returns aggregates for the last 7 days (sets, items, accuracy, seconds
+per item, best/fastest day, stars, accuracy by item type) — no raw answers.
+When the set just finished is scheduled on a Saturday, the end screen shows a
+„Tavo savaitė“ card with those numbers and an inline-SVG bar chart (Pr–Še).
+
 ## Notes on behavior
 
 - Only one row of `task_sets` per `(scheduled_date, subject)` — insert with

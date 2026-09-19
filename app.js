@@ -166,6 +166,100 @@
     setTimeout(() => burst.remove(), 1500);
   }
 
+  // ---- weekly stats card (SPEC.md §7.2) ------------------------------------
+
+  const DOW_NAMES = ["pirmadienis", "antradienis", "trečiadienis", "ketvirtadienis", "penktadienis", "šeštadienis", "sekmadienis"];
+  const DAY_LABELS = ["Pr", "An", "Tr", "Kt", "Pe", "Še"];
+  const TYPE_NAMES = {
+    quick_math: "Greita matematika",
+    number_input: "Skaičių užduotys",
+    choice: "Pasirinkimai",
+    compare: "Palyginimai",
+    match: "Poros",
+    open_schema: "Uždaviniai",
+  };
+
+  function isSaturday(dateStr) {
+    const [y, m, d] = String(dateStr).split("-").map(Number);
+    return new Date(y, m - 1, d).getDay() === 6;
+  }
+
+  // Lithuanian noun after a count (accusative, as after "Išsprendei …"):
+  // 1 → one, 2–9 → few, 0 and 10–19 (and tens) → many.
+  function ltCount(n, one, few, many) {
+    const t = n % 100;
+    const u = n % 10;
+    if (t >= 11 && t <= 19) return many;
+    if (u === 1) return one;
+    if (u === 0) return many;
+    return few;
+  }
+
+  function buildWeekChart(byDay) {
+    const counts = [0, 0, 0, 0, 0, 0];
+    (byDay || []).forEach((d) => {
+      if (d.dow >= 1 && d.dow <= 6) counts[d.dow - 1] += d.total;
+    });
+    const max = Math.max(...counts, 1);
+    const W = 300;
+    const base = 112;
+    const maxH = 80;
+    const bw = 34;
+    const gap = 14;
+    const x0 = (W - (6 * bw + 5 * gap)) / 2;
+    const bars = counts
+      .map((n, i) => {
+        const h = n ? Math.max(6, Math.round((n / max) * maxH)) : 3;
+        const x = x0 + i * (bw + gap);
+        const y = base - h;
+        return (
+          `<rect class="${n ? "chart-bar" : "chart-bar empty"}" x="${x}" y="${y}" width="${bw}" height="${h}" rx="5"/>` +
+          (n ? `<text class="chart-count" x="${x + bw / 2}" y="${y - 7}" text-anchor="middle">${n}</text>` : "") +
+          `<text class="chart-day" x="${x + bw / 2}" y="${base + 24}" text-anchor="middle">${DAY_LABELS[i]}</text>`
+        );
+      })
+      .join("");
+    const label = "Užduotys per dieną: " + DAY_LABELS.map((d, i) => `${d} ${counts[i]}`).join(", ");
+    return `<svg class="week-chart" viewBox="0 0 ${W} 146" role="img" aria-label="${label}">${bars}</svg>`;
+  }
+
+  // Aggregates only — weekly_stats() never returns raw answers.
+  function buildWeekCard(s) {
+    if (!s || !s.total_items) return null;
+    const facts = [];
+    facts.push(`Išsprendei <b>${s.total_items}</b> ${ltCount(s.total_items, "užduotį", "užduotis", "užduočių")}`);
+    if (s.accuracy_pct !== null && s.accuracy_pct !== undefined) {
+      facts.push(`Teisingai — <b>${s.accuracy_pct} %</b>`);
+    }
+    if (s.fastest_day && s.best_day && s.fastest_day.dow === s.best_day.dow) {
+      facts.push(`Greičiausia ir tiksliausia diena — <b>${DOW_NAMES[s.best_day.dow - 1]}</b>`);
+    } else {
+      if (s.fastest_day) facts.push(`Greičiausia diena — <b>${DOW_NAMES[s.fastest_day.dow - 1]}</b>`);
+      if (s.best_day) facts.push(`Tiksliausia diena — <b>${DOW_NAMES[s.best_day.dow - 1]}</b>`);
+    }
+    if (s.avg_seconds_per_item !== null && s.avg_seconds_per_item !== undefined) {
+      facts.push(`Vienai užduočiai skyrei vidutiniškai <b>${Math.round(s.avg_seconds_per_item)} s</b>`);
+    }
+    facts.push(`Savaitės žvaigždutės — <b>⭐ ${s.stars_earned || 0}</b>`);
+
+    const types = (s.by_type || [])
+      .map(
+        (t) =>
+          `<li><span>${escapeHtml(TYPE_NAMES[t.type] || t.type)}</span><b>${t.accuracy_pct} %</b></li>`
+      )
+      .join("");
+
+    return el(`
+      <section class="week-card" aria-labelledby="week-title">
+        <h2 id="week-title" class="week-title">Tavo savaitė</h2>
+        <ul class="week-facts">${facts.map((f) => `<li>${f}</li>`).join("")}</ul>
+        <p class="week-sub">Užduotys per dieną</p>
+        ${buildWeekChart(s.by_day)}
+        ${types ? `<p class="week-sub">Kaip sekėsi pagal tipą</p><ul class="week-types">${types}</ul>` : ""}
+      </section>
+    `);
+  }
+
   // ---- localStorage progress -------------------------------------------
 
   function progressKey(taskSetId) {
@@ -791,17 +885,33 @@
     }
     clearProgress(session.taskSet.id);
 
-    let reward = null;
-    try {
-      // The server recomputes everything from the saved results row.
-      const { data, error } = await client.rpc("record_progress", {
-        p_set_id: session.taskSet.id,
-      });
-      if (error) throw error;
-      reward = Array.isArray(data) ? data[0] : data;
-    } catch (e) {
-      /* progress/streak/badges are a bonus — a failure here shouldn't block the finish screen */
-    }
+    // Both are bonuses: a failure in either must never block the finish
+    // screen. They run in parallel; the results row is already saved.
+    const onSaturday = isSaturday(session.taskSet.scheduled_date);
+    const [reward, weekly] = await Promise.all([
+      (async () => {
+        try {
+          // The server recomputes everything from the saved results row.
+          const { data, error } = await client.rpc("record_progress", {
+            p_set_id: session.taskSet.id,
+          });
+          if (error) throw error;
+          return Array.isArray(data) ? data[0] : data;
+        } catch (e) {
+          return null;
+        }
+      })(),
+      (async () => {
+        if (!onSaturday) return null;
+        try {
+          const { data, error } = await client.rpc("weekly_stats");
+          if (error) throw error;
+          return data;
+        } catch (e) {
+          return null;
+        }
+      })(),
+    ]);
 
     // Prefer the server's figure; fall back to the local count offline.
     const shownStars = reward && typeof reward.set_stars === "number" ? reward.set_stars : setStars;
@@ -837,6 +947,9 @@
         endScreen.appendChild(badgesWrap);
       }
     }
+
+    const weekCard = buildWeekCard(weekly);
+    if (weekCard) endScreen.appendChild(weekCard);
 
     // Plain outbound link to a Spotify search — nothing is embedded or bundled.
     endScreen.appendChild(
