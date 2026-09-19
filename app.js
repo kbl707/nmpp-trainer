@@ -793,9 +793,9 @@
 
     let reward = null;
     try {
-      const { data, error } = await client.rpc("add_stars", {
+      // The server recomputes everything from the saved results row.
+      const { data, error } = await client.rpc("record_progress", {
         p_set_id: session.taskSet.id,
-        p_stars: setStars,
       });
       if (error) throw error;
       reward = Array.isArray(data) ? data[0] : data;
@@ -803,19 +803,23 @@
       /* progress/streak/badges are a bonus — a failure here shouldn't block the finish screen */
     }
 
+    // Prefer the server's figure; fall back to the local count offline.
+    const shownStars = reward && typeof reward.set_stars === "number" ? reward.set_stars : setStars;
+
     screenEl.innerHTML = `
       <div class="end-screen">
         <div class="star">⭐</div>
         <p class="end-title">Šiandien — atlikta!</p>
         <p class="end-score">Teisingai: ${correct_count} iš ${total_autochecked}</p>
-        <p class="end-stars">⭐ +${setStars}</p>
+        <p class="end-stars">⭐ +${shownStars}</p>
+        ${reward ? `<p class="end-total">Iš viso: ⭐ ${reward.total_stars}</p>` : ""}
         ${reward && reward.streak >= 1 ? `<p class="end-streak">🔥 ${reward.streak} dienos iš eilės</p>` : ""}
       </div>
     `;
     topbarEl.hidden = true;
 
     const endScreen = screenEl.querySelector(".end-screen");
-    if (setStars > 0) renderConfetti(endScreen);
+    if (shownStars > 0) renderConfetti(endScreen);
     playChime();
 
     if (reward) {

@@ -111,11 +111,12 @@ either school subject.
 Light gamification on top of the existing scoring, all opt-out-proof by
 design (no sound by default, motion respects `prefers-reduced-motion`,
 wrong answers never show a star count). Lifetime state lives in a
-single-row `progress` table, writable only through the `add_stars(set_id,
-stars)` RPC — it recomputes the stars to credit from the just-inserted
-`results` row itself rather than trusting its own argument, and guards
-against being called twice via `results.stars_credited`. The header's `⭐
-{n}` badge reads `progress` directly (anon `select` only).
+single-row `progress` table, writable only through the
+`record_progress(set_id uuid)` RPC — it recomputes everything (clamped stars,
+streak, badges) from the just-inserted `results` row rather than trusting the
+client, and guards against being called twice via `results.stars_credited`.
+The header's `⭐ {n}` badge reads `progress` directly (anon `select` only).
+(`add_stars` is kept as a wrapper for older clients.)
 
 ## Notes on behavior
 

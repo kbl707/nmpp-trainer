@@ -406,6 +406,11 @@ a.btn {
   margin-top: 10px;
 }
 
+.end-total {
+  font-size: 18px;
+  margin-top: 2px;
+}
+
 .end-streak {
   font-size: 19px;
   margin-top: 6px;

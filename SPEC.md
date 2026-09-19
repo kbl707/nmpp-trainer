@@ -161,7 +161,7 @@ Single-family app, no auth, but the anon key is public in the page source:
   No insert/update/delete for anon.
 - `results`: anon may `insert` only. No select/update/delete for anon.
 - `progress`: anon may `select` only. Writes only happen through the
-  `add_stars` RPC (see §7.1), never directly.
+  `record_progress` RPC (see §7.1), never directly.
 - All writes of `task_sets` and reads of `results` happen through the Supabase
   MCP / dashboard (service role) — i.e., by parent/Claude, never by the page.
 
@@ -233,16 +233,21 @@ rule as everywhere else in the app.
 
 **Persistent progress.** A single-row `progress` table holds lifetime
 `total_stars`, `streak`, and `badges` (jsonb array of badge keys). Anon may
-only `select` it — the only way to change it is the `add_stars(set_id,
-stars)` RPC, called once per completed set right after the `results`
-insert. The RPC is `security definer` so it can read `results`/write
-`progress` despite anon's normal RLS, but it never trusts its `stars`
-argument blindly: it looks up the matching `results` row, recomputes the
-stars to credit from that row's own stored `answers[].stars`, and guards
-against being called twice for the same set via `results.stars_credited`.
-It also recomputes the streak and checks badge thresholds itself, so a
-client can't forge either. A small header badge `⭐ 142` (the lifetime
-total) shows on every page load, updated in place after each completion.
+only `select` it — the only way to change it is the
+`record_progress(set_id uuid)` RPC, called once per completed set right
+after the `results` insert. The RPC is `security definer` so it can read
+`results`/write `progress` despite anon's normal RLS, and it recomputes
+*everything* from the saved `results` row: stars are clamped per answer (a
+correct answer is worth 1 or 2, anything else 0, whatever the client wrote),
+the streak and badge thresholds are recomputed server-side, and
+`results.stars_credited` stops a second call for the same set from
+crediting twice. It returns `total_stars`, `streak`, `badges`,
+`new_badges` (earned by this call) and `set_stars` (credited for this set).
+`add_stars(set_id, stars)` remains as a thin wrapper for older clients (the
+stars argument is ignored). "Today" is Vilnius-local. A small header badge
+`⭐ 142` (the lifetime total) shows on every page load, updated in place
+after each completion. The end screen shows the set's stars, the running
+total (`Iš viso: ⭐ N`), the streak line, any new badges, and the confetti.
 
 **Badges** (Lithuanian names, simple emoji, stored by key in
 `progress.badges`, shown once on the end screen the set they're first

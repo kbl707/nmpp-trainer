@@ -21,7 +21,7 @@ create table if not exists results (
   total_autochecked int not null,
   duration_seconds int not null, -- whole session
   interrupted boolean default false, -- child abandoned mid-way
-  stars_credited boolean not null default false, -- guards add_stars() against double-crediting
+  stars_credited boolean not null default false, -- guards record_progress() against double-crediting
   submitted_at timestamptz default now()
 );
 
@@ -55,26 +55,27 @@ create policy "anon can insert results"
   with check (true);
 
 -- progress: anon may only read (for the header star badge). The only way
--- to change it is the add_stars() RPC below, which is security definer and
+-- to change it is the record_progress() RPC below, which is security definer and
 -- so bypasses RLS on progress/results internally, with its own validation.
 create policy "anon can read progress"
   on progress for select
   to anon
   using (true);
 
--- add_stars: called once per completed set (from submitSession in app.js).
--- Recomputes the stars to credit from the stored results row itself (never
--- trusts p_stars directly), guards against double-crediting via
--- results.stars_credited, recomputes the day-streak, and awards any newly
--- earned badges. See SPEC.md §7.1 for the badge conditions.
-create or replace function add_stars(p_set_id uuid, p_stars int)
-returns table(total_stars int, streak int, badges jsonb, new_badges jsonb)
+-- record_progress: called once per completed set (from submitSession in
+-- app.js). Recomputes everything from the saved results row: stars (clamped —
+-- a correct answer is worth 1 or 2, anything else 0, whatever the client
+-- wrote), the day-streak, and any newly earned badges. Guards against
+-- double-crediting via results.stars_credited. See SPEC.md §7.1.
+create or replace function record_progress(p_set_id uuid)
+returns table(total_stars int, streak int, badges jsonb, new_badges jsonb, set_stars int)
 language plpgsql
 security definer
 set search_path = public
 as $$
 declare
   v_result results%rowtype;
+  v_today date := (now() at time zone 'Europe/Vilnius')::date;
   v_computed_stars int;
   v_streak int := 0;
   v_day record;
@@ -94,18 +95,24 @@ begin
     raise exception 'no results row found for set_id %', p_set_id;
   end if;
 
+  -- Stars are recomputed from the stored answers and clamped: a correct
+  -- answer is worth 1 or 2, anything else 0, whatever the client wrote.
+  select coalesce(sum(
+    case when (a->>'correct')::boolean is true
+         then least(greatest(coalesce((a->>'stars')::int, 0), 0), 2)
+         else 0 end
+  ), 0) into v_computed_stars
+  from jsonb_array_elements(v_result.answers) a;
+
   if v_result.stars_credited then
     -- already credited (e.g. duplicate call after a reload) — no-op
     select p.total_stars, p.streak, p.badges into total_stars, streak, badges
     from progress p where p.id = 1;
     new_badges := '[]'::jsonb;
+    set_stars := v_computed_stars;
     return next;
     return;
   end if;
-
-  -- recompute from the stored answers rather than trusting p_stars directly
-  select coalesce(sum((a->>'stars')::int), 0) into v_computed_stars
-  from jsonb_array_elements(v_result.answers) a;
 
   update results set stars_credited = true where id = v_result.id;
 
@@ -119,7 +126,7 @@ begin
         join task_sets t2 on t2.id = r2.task_set_id
         where t2.scheduled_date = d.scheduled_date and r2.interrupted = false
       ) as completed
-    from (select distinct scheduled_date from task_sets where scheduled_date <= current_date) d
+    from (select distinct scheduled_date from task_sets where scheduled_date <= v_today) d
     order by d.scheduled_date desc
   ) loop
     if v_day.completed then
@@ -173,8 +180,22 @@ begin
     into total_stars, streak, badges;
 
   new_badges := v_new_badges;
+  set_stars := v_computed_stars;
   return next;
 end;
+$$;
+
+grant execute on function record_progress(uuid) to anon;
+
+-- Back-compat for clients still calling the old name; the stars argument
+-- was never trusted and is now ignored entirely.
+create or replace function add_stars(p_set_id uuid, p_stars int)
+returns table(total_stars int, streak int, badges jsonb, new_badges jsonb)
+language sql
+security definer
+set search_path = public
+as $$
+  select r.total_stars, r.streak, r.badges, r.new_badges from record_progress(p_set_id) r;
 $$;
 
 grant execute on function add_stars(uuid, int) to anon;
