@@ -172,7 +172,18 @@ Single-family app, no auth, but the anon key is public in the page source:
 - Visual style: white paper with a light 24 px squared-notebook grid background,
   ink `#21242b`, single accent `#1d5fad` (school-ink blue). Matches existing
   printed materials.
-- **One task visible at a time**, big „Toliau“ button; progress shown as
+- **One primary button per item: „Toliau“** (no separate check/next pair).
+  Auto-checked items (`quick_math`, `number_input`, `choice`, `compare`,
+  `match`): pressing it checks the answer. Correct → praise flash and
+  advance at once. Wrong → stay on the item, show „Pabandyk dar kartą“ and
+  keep the answer editable; the second press records the answer as final
+  (correct or not) and advances. It stays disabled until there is something
+  to check (a typed value, a selected option, all pairs made); Enter on an
+  empty numeric field shows „Įrašyk atsakymą“ and never records anything.
+  Self-marked items (`open_schema`, `printable`) keep their single
+  „Padariau ✔“ and `passage` its single „Toliau“, which advance directly.
+  Enter = the item's primary button.
+- **One task visible at a time**, progress shown as
   `3 / 7` plus a thin progress bar. Minimal decoration overall — the only
   animation/sound is the brief, optional reward feedback in §7.1.
 - First and last items of a set should be easy (the parent/Claude curates this;
@@ -189,8 +200,8 @@ Single-family app, no auth, but the anon key is public in the page source:
 - Loading: `Kraunama…`
 - No tasks today: `Šiandien užduočių nėra. Laisva diena! 🎉`
 - Next: `Toliau`
-- Check: `Tikrinti`
 - Retry prompt: `Pabandyk dar kartą`
+- Empty answer nudge: `Įrašyk atsakymą`
 - Self-mark done: `Padariau ✔`
 - Hint: `Užuomina`
 - Finish screen: `Šiandien — atlikta!` / `Teisingai: {n} iš {m}`

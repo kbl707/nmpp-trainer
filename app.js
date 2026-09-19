@@ -282,11 +282,36 @@
     if (stars > 0) showPraiseToast(stars);
   }
 
-  function showRetryThenAdvanceControls(container, onAdvance) {
-    const advanceBtn = el(`<button type="button" class="btn">Toliau</button>`);
-    advanceBtn.addEventListener("click", onAdvance, { once: true });
-    container.appendChild(advanceBtn);
+  // One "Toliau" press per attempt. Correct → record and advance at once.
+  // Wrong on the first press → stay, nudge, keep the answer editable; the
+  // second press is final (recorded correct or not) and advances.
+  function submitAttempt(item, retryMsg, evaluate) {
+    if (!session || session.submitting) return false;
+    session.attempt += 1;
+    const { answer, correct } = evaluate();
+    if (correct || session.attempt >= 2) {
+      finalizeItem(item, answer, correct);
+      nextItem();
+      return true;
+    }
+    retryMsg.textContent = "Pabandyk dar kartą";
+    retryMsg.hidden = false;
+    return false;
   }
+
+  // Enter = the item's primary button, unless focus is already on a
+  // button/link (native Enter clicks it) or in an input (which handles
+  // Enter itself so an empty field can show its own nudge).
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" || e.repeat) return;
+    const tag = e.target && e.target.tagName;
+    if (tag === "BUTTON" || tag === "A" || tag === "INPUT" || tag === "TEXTAREA") return;
+    const primary = screenEl.querySelector("[data-primary]:not([disabled])");
+    if (primary) {
+      e.preventDefault();
+      primary.click();
+    }
+  });
 
   function nextItem() {
     session.index += 1;
@@ -377,72 +402,75 @@
       container.innerHTML = `
         <p class="prompt">${escapeHtml(item.prompt)}</p>
         <div class="choice-list"></div>
-        <p class="retry-msg" hidden>Pabandyk dar kartą</p>
+        <button type="button" class="btn" data-primary disabled>Toliau</button>
+        <p class="retry-msg" hidden></p>
         ${renderHintBlock(item)}
       `;
       const list = container.querySelector(".choice-list");
+      const nextBtn = container.querySelector("[data-primary]");
       const retryMsg = container.querySelector(".retry-msg");
+      let selected = null;
       (item.data.options || []).forEach((opt, idx) => {
-        const btn = el(`<button type="button" class="option-btn">${escapeHtml(opt)}</button>`);
-        btn.addEventListener("click", () => handleChoicePick(idx));
+        const btn = el(`<button type="button" class="option-btn" aria-pressed="false">${escapeHtml(opt)}</button>`);
+        btn.addEventListener("click", () => {
+          selected = idx;
+          Array.from(list.children).forEach((b, i) => {
+            b.classList.toggle("selected", i === idx);
+            b.setAttribute("aria-pressed", String(i === idx));
+          });
+          nextBtn.disabled = false;
+        });
         list.appendChild(btn);
       });
       wireHint(container, item);
 
-      function handleChoicePick(idx) {
-        const buttons = Array.from(list.querySelectorAll(".option-btn"));
-        buttons.forEach((b) => b.classList.remove("selected"));
-        buttons[idx].classList.add("selected");
-        session.attempt += 1;
-        const isCorrect = item.answer && idx === item.answer.index;
-        buttons.forEach((b) => (b.disabled = true));
-        if (isCorrect || session.attempt >= 2) {
-          finalizeItem(item, { index: idx }, !!isCorrect);
-          showRetryThenAdvanceControls(container, nextItem);
-        } else {
-          retryMsg.hidden = false;
-          buttons.forEach((b) => {
-            b.disabled = false;
-            b.classList.remove("selected");
-          });
-        }
-      }
+      nextBtn.addEventListener("click", () => {
+        if (selected === null) return;
+        submitAttempt(item, retryMsg, () => ({
+          answer: { index: selected },
+          correct: !!(item.answer && selected === item.answer.index),
+        }));
+      });
     },
 
     compare(container, item) {
       container.innerHTML = `
         <p class="prompt">${item.data.left} &nbsp;&nbsp;?&nbsp;&nbsp; ${item.data.right}</p>
         <div class="compare-row"></div>
-        <p class="retry-msg" hidden>Pabandyk dar kartą</p>
+        <button type="button" class="btn" data-primary disabled>Toliau</button>
+        <p class="retry-msg" hidden></p>
         ${renderHintBlock(item)}
       `;
       const row = container.querySelector(".compare-row");
+      const nextBtn = container.querySelector("[data-primary]");
       const retryMsg = container.querySelector(".retry-msg");
+      let selected = null;
       ["<", ">", "="].forEach((sign) => {
-        const btn = el(`<button type="button" class="option-btn compare-btn">${sign}</button>`);
-        btn.addEventListener("click", () => handlePick(sign, btn));
+        const btn = el(
+          `<button type="button" class="option-btn compare-btn" aria-pressed="false" aria-label="${
+            sign === "<" ? "mažiau" : sign === ">" ? "daugiau" : "lygu"
+          }">${sign}</button>`
+        );
+        btn.addEventListener("click", () => {
+          selected = sign;
+          Array.from(row.children).forEach((b) => {
+            const on = b === btn;
+            b.classList.toggle("selected", on);
+            b.setAttribute("aria-pressed", String(on));
+          });
+          nextBtn.disabled = false;
+        });
         row.appendChild(btn);
       });
       wireHint(container, item);
 
-      function handlePick(sign, btn) {
-        const buttons = Array.from(row.querySelectorAll(".option-btn"));
-        buttons.forEach((b) => b.classList.remove("selected"));
-        btn.classList.add("selected");
-        session.attempt += 1;
-        const isCorrect = item.answer && sign === item.answer.sign;
-        buttons.forEach((b) => (b.disabled = true));
-        if (isCorrect || session.attempt >= 2) {
-          finalizeItem(item, { sign }, !!isCorrect);
-          showRetryThenAdvanceControls(container, nextItem);
-        } else {
-          retryMsg.hidden = false;
-          buttons.forEach((b) => {
-            b.disabled = false;
-            b.classList.remove("selected");
-          });
-        }
-      }
+      nextBtn.addEventListener("click", () => {
+        if (selected === null) return;
+        submitAttempt(item, retryMsg, () => ({
+          answer: { sign: selected },
+          correct: !!(item.answer && selected === item.answer.sign),
+        }));
+      });
     },
 
     match(container, item) {
@@ -458,15 +486,15 @@
           <p class="paired-title">Sujungta</p>
           <div class="paired-list"></div>
         </div>
-        <button type="button" class="btn" data-action="check" disabled>Tikrinti</button>
-        <p class="retry-msg" hidden>Pabandyk dar kartą</p>
+        <button type="button" class="btn" data-primary disabled>Toliau</button>
+        <p class="retry-msg" hidden></p>
         ${renderHintBlock(item)}
       `;
       const leftCol = container.querySelector('[data-side="left"]');
       const rightCol = container.querySelector('[data-side="right"]');
       const pairedSection = container.querySelector(".paired-section");
       const pairedList = container.querySelector(".paired-list");
-      const checkBtn = container.querySelector('[data-action="check"]');
+      const checkBtn = container.querySelector("[data-primary]");
       const retryMsg = container.querySelector(".retry-msg");
       wireHint(container, item);
 
@@ -529,31 +557,19 @@
         render();
       }
 
-      function disableAll() {
-        container.querySelectorAll("button").forEach((b) => (b.disabled = true));
-      }
-
-      checkBtn.addEventListener("click", checkPairs);
+      checkBtn.addEventListener("click", () => {
+        if (pairs.length !== left.length) return;
+        submitAttempt(item, retryMsg, () => {
+          const wanted = (item.answer && item.answer.pairs) || [];
+          const wantedSet = new Set(wanted.map((p) => p[0] + ":" + p[1]));
+          const gotSet = new Set(pairs.map((p) => p[0] + ":" + p[1]));
+          return {
+            answer: { pairs },
+            correct: wantedSet.size === gotSet.size && [...wantedSet].every((p) => gotSet.has(p)),
+          };
+        });
+      });
       render();
-
-      function checkPairs() {
-        session.attempt += 1;
-        const wanted = (item.answer && item.answer.pairs) || [];
-        const wantedSet = new Set(wanted.map((p) => p[0] + ":" + p[1]));
-        const gotSet = new Set(pairs.map((p) => p[0] + ":" + p[1]));
-        const isCorrect =
-          wantedSet.size === gotSet.size && [...wantedSet].every((p) => gotSet.has(p));
-        if (isCorrect || session.attempt >= 2) {
-          disableAll();
-          finalizeItem(item, { pairs }, !!isCorrect);
-          showRetryThenAdvanceControls(container, nextItem);
-        } else {
-          retryMsg.hidden = false;
-          pairs = [];
-          pendingLeft = null;
-          render();
-        }
-      }
     },
 
     open_schema(container, item) {
@@ -564,7 +580,7 @@
         <p class="prompt">${escapeHtml(text)}</p>
         ${instruction ? `<p class="instruction">${escapeHtml(instruction)}</p>` : ""}
         ${hasNumericAnswer ? `<input type="number" inputmode="numeric" placeholder="Atsakymas" aria-label="Atsakymas" />` : ""}
-        <button type="button" class="btn" data-action="done">Padariau ✔</button>
+        <button type="button" class="btn" data-primary data-action="done">Padariau ✔</button>
         ${renderHintBlock(item)}
       `;
       wireHint(container, item);
@@ -573,6 +589,7 @@
       doneBtn.addEventListener(
         "click",
         () => {
+          if (session.submitting) return;
           let correct = null;
           let answerValue = {};
           if (hasNumericAnswer && input && input.value.trim() !== "") {
@@ -581,12 +598,16 @@
             correct = val === item.answer.value;
           }
           doneBtn.disabled = true;
-          if (input) input.disabled = true;
           finalizeItem(item, answerValue, correct);
-          showRetryThenAdvanceControls(container, nextItem);
+          nextItem();
         },
         { once: true }
       );
+      if (input) {
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") doneBtn.click();
+        });
+      }
     },
 
     passage(container, item) {
@@ -594,10 +615,11 @@
         <h2 class="passage-title">${escapeHtml((item.data && item.data.title) || "")}</h2>
         <div class="passage-body standalone">${paragraphsHtml(item.data && item.data.text)}</div>
       `;
-      const btn = el(`<button type="button" class="btn">Toliau</button>`);
+      const btn = el(`<button type="button" class="btn" data-primary>Toliau</button>`);
       btn.addEventListener(
         "click",
         () => {
+          if (session.submitting) return;
           finalizeItem(item, null, null);
           nextItem();
         },
@@ -636,48 +658,44 @@
     container.innerHTML = `
       <p class="prompt">${escapeHtml(promptText)}</p>
       <input type="number" inputmode="numeric" autocomplete="off" aria-label="Atsakymas" />
-      <button type="button" class="btn" data-action="check" disabled>Tikrinti</button>
+      <button type="button" class="btn" data-primary disabled>Toliau</button>
       <p class="retry-msg" hidden></p>
       ${renderHintBlock(item)}
     `;
     wireHint(container, item);
     const input = container.querySelector("input");
-    const checkBtn = container.querySelector('[data-action="check"]');
+    const nextBtn = container.querySelector("[data-primary]");
     const retryMsg = container.querySelector(".retry-msg");
     input.focus();
 
     input.addEventListener("input", () => {
-      checkBtn.disabled = input.value.trim() === "";
+      nextBtn.disabled = input.value.trim() === "";
       if (input.value.trim() !== "") retryMsg.hidden = true;
     });
 
-    function check() {
+    // Never record an answer the child did not type: an empty field only
+    // nudges, it doesn't consume an attempt.
+    function press() {
       const raw = input.value.trim();
       if (raw === "") {
         retryMsg.textContent = "Įrašyk atsakymą";
         retryMsg.hidden = false;
         return;
       }
-      session.attempt += 1;
       const val = Number(raw);
-      const isCorrect = !Number.isNaN(val) && val === item.answer.value;
-      if (isCorrect || session.attempt >= 2) {
-        input.disabled = true;
-        checkBtn.remove();
-        finalizeItem(item, { value: Number.isNaN(val) ? raw : val }, !!isCorrect);
-        showRetryThenAdvanceControls(container, nextItem);
-      } else {
-        retryMsg.textContent = "Pabandyk dar kartą";
-        retryMsg.hidden = false;
-        input.value = "";
-        checkBtn.disabled = true;
+      const advanced = submitAttempt(item, retryMsg, () => ({
+        answer: { value: Number.isNaN(val) ? raw : val },
+        correct: !Number.isNaN(val) && val === item.answer.value,
+      }));
+      if (!advanced) {
         input.focus();
+        input.select();
       }
     }
 
-    checkBtn.addEventListener("click", check);
+    nextBtn.addEventListener("click", press);
     input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") check();
+      if (e.key === "Enter" && !e.repeat) press();
     });
   }
 
@@ -714,6 +732,10 @@
   }
 
   async function submitSession() {
+    // The last press advances straight into this async save; swap the item
+    // out at once so a second tap can't record or submit twice.
+    session.submitting = true;
+    screenEl.innerHTML = `<p class="loading">Kraunama…</p>`;
     stopTimer();
     updateTopbar();
     const duration_seconds = Math.round((Date.now() - session.sessionStartMs) / 1000);
