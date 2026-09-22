@@ -951,10 +951,10 @@
     const weekCard = buildWeekCard(weekly);
     if (weekCard) endScreen.appendChild(weekCard);
 
-    // Plain outbound link to a Spotify search — nothing is embedded or bundled.
+    // Plain outbound link to a YouTube Music search — nothing is embedded or bundled.
     endScreen.appendChild(
       el(
-        `<a class="btn btn-secondary" href="https://open.spotify.com/search/Scoop%20Conor%20Price%20Nic%20D" target="_blank" rel="noopener">🎵 Švęsk su Scoop</a>`
+        `<a class="btn btn-secondary" href="https://music.youtube.com/search?q=Scoop%20Conor%20Price%20Nic%20D" target="_blank" rel="noopener">🎵 Švęsk su Scoop</a>`
       )
     );
   }

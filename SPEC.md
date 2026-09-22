@@ -272,8 +272,8 @@ the completion chime fires after the async save, which is why the context
 must already be running by then.
 
 **Celebrate link.** The end screen has a „🎵 Švęsk su Scoop“ button that
-opens a Spotify *search* URL in a new tab. It is a plain outbound link —
-no copyrighted audio is embedded or bundled.
+opens a YouTube Music *search* URL in a new tab. It is a plain outbound
+link — no copyrighted audio is embedded or bundled.
 
 ## 7.2 Weekly stats (Saturday end screen)
 
