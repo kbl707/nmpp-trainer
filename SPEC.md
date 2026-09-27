@@ -372,3 +372,181 @@ stable and versionless-tolerant (unknown fields ignored).
 - [ ] Anon key cannot read `results` or future (`> tomorrow`) `task_sets` (test via curl).
 - [ ] A `task_sets` row inserted via SQL with a new/unknown item type does not crash the page.
 - [ ] Lighthouse accessibility ≥ 95 on index.
+
+## 13. Lilija reading trainer
+
+A second learner: Lilija, age 7, 2nd grade, works on iPad (mostly alone).
+Focus areas: blending syllables into words, and reading comprehension —
+distinct from Henris's NMPP maths/language prep, sharing the same app and
+database.
+
+### 13.1 Data model
+
+`task_sets` and `results` both gain:
+
+```sql
+learner text not null default 'henris' check (learner in ('henris','lilija'))
+```
+
+`task_sets`'s uniqueness moves from `(scheduled_date, subject)` to
+`(scheduled_date, subject, learner)` — each learner can have their own row
+for the same day/subject (Lilija's reading sets use `subject = 'lietuviu'`,
+same as Henris's language-prep days; the two no longer collide).
+
+`progress` (§7.1) moves from a single fixed row (`id = 1`) to one row per
+learner: `progress.learner text primary key` in place of `id`. Stars,
+streak and badges are entirely independent per learner —
+`record_progress(set_id)` derives the learner from the set's `task_sets`
+row (never trusted from the client) and scopes every computation
+(streak walk, `pirma_savaite`/`daugybos_meistras`/`be_klaidu`/
+`savaites_ugnis` badge conditions) to that learner.
+
+**RLS is unchanged.** Neither existing policy discriminates on `learner`:
+`task_sets` read and `results` insert were already open to anon subject to
+their existing predicates, which don't mention `learner`; `progress` read
+was already `using (true)`, which covers both learners' rows. The page
+itself filters by learner client-side (`.eq('learner', ...)`); `learner`
+is not a security boundary, `scheduled_date` still is.
+
+### 13.2 Page
+
+`/lilija/` (`lilija/index.html`) — same shell/behavior as `/` (today's task
+sets, one item at a time, localStorage autosave, abandoned-session flush),
+scoped to `learner = 'lilija'`. Both `/` and `/lilija/` load the same
+`app.js`; the page sets `window.NMPP_LEARNER = "lilija"` before it loads
+(default `"henris"` if unset, so `/` needs no change beyond the header
+switcher below).
+
+UI differences from `/` (`body.lilija` in styles.css):
+- Base font 22px; reading text (prompts, passages, word tiles) 26px.
+- All buttons/tiles ≥ 64px tall.
+- One item per screen (already true of `/`).
+- The elapsed-time clock in the topbar is hidden (`#timer` stays `hidden`
+  in the markup) — Lilija's page shows no timer except inside `read_aloud`'s
+  own reading-phase stopwatch.
+- Praise flashes and end-screen stars/streak/badges/confetti: identical
+  mechanism to Henris (§7.1), just scoped to her `progress` row.
+- A header switcher (same pattern as the `/h` ↔ `/l` timetable pages):
+  `Henris` / `Lilija` links between `/` and `/lilija/`, current page marked
+  with `aria-current="page"`.
+
+### 13.3 Text-to-speech
+
+`window.speechSynthesis`, Lithuanian only, Lilija's page only (Henris never
+gets TTS buttons). At boot, the page waits (up to ~1.2s, via the
+`voiceschanged` event) for the voice list and picks a voice whose `lang`
+starts with `lt`. If none is found, every 🔊 button across all item types is
+simply not rendered — no broken/disabled buttons. When available: rate
+`0.8`, `lang: "lt-LT"`, one shared utterance queue (`speechSynthesis.cancel()`
+before each new one, so rapid taps don't queue up speech).
+
+### 13.4 New item types
+
+Renderer fallback rule from §5 still applies (unknown `type` → `open_schema`-
+like), so these are additive.
+
+**`syllable_build`** (auto-checked):
+
+```jsonc
+{ "type": "syllable_build",
+  "data": { "syllables": ["ka","ma","ra"], "target": "kamara" },
+  "answer": { "word": "kamara" } }
+```
+
+Syllable tiles rendered in shuffled order; tapping a tile appends it to a
+word slot above (and disables that tile — each tile is a distinct instance,
+so a repeated syllable has one tile per occurrence) and speaks it aloud
+if TTS is available; tapping the slot removes the most recently added
+syllable and re-enables its tile. "Toliau" checks the assembled word against
+`answer.word` (enabled once at least one syllable is placed), using the same
+one-retry flow as every other auto-checked type (§7). Recorded answer:
+`{ word, attempts }` — `attempts` counts tile placements/removals, a rough
+measure of how much trial-and-error the blend took.
+
+**`read_aloud`** (non-scored — like `passage`/`open_schema`, `correct` is
+always `null`, excluded from `total_autochecked`):
+
+```jsonc
+{ "type": "read_aloud",
+  "data": { "title": "Katė ir pienas",
+            "text": "Katė gėrė pieną. Ji buvo laiminga. ...",
+            "syllables": "Ka-tė gė-rė pie-ną. Ji bu-vo lai-min-ga. ...",
+            "day": 1 } }
+```
+
+Flow:
+1. Title + "Pradedu" button.
+2. Reading screen: `data.syllables` rendered as word tiles (hyphens
+   stripped for the visible text; each syllable within a word alternates
+   between the app's two brand colors — `--ink` and `--accent`, already
+   proven at AA contrast — reset per word so no word reads as one flat
+   color). A header toggle ("Paprastas tekstas") switches to plain,
+   uncolored text. A visible stopwatch runs during this screen only (the
+   one exception to §13.2's "no timer" rule). "Baigiau" stops it.
+3. Review screen, shown together: the same word tiles (still visible), "Ar
+   buvo sunku?" with three large buttons (`Lengva` / `Vidutiniškai` /
+   `Sunku`), and a "Tėvai: pažymėti klaidas" toggle — when on, each word
+   tile becomes tappable (toggles a red underline / error state). Tapping a
+   difficulty button records the answer and advances (no separate confirm
+   step; mark errors first, rate last).
+
+Recorded answer: `{ seconds, word_count, words_per_minute, self_rating,
+error_words }` — `seconds` is reading-phase-only (Pradedu→Baigiau, distinct
+from the generic per-item `seconds` §4 already records for every item type,
+which spans the whole item including the review screen); `word_count` from
+splitting `data.text` on whitespace; `words_per_minute` =
+`round(word_count / (seconds/60))`; `self_rating` one of `lengva` /
+`vidutiniskai` / `sunku`; `error_words` the tapped words (empty array if the
+parent toggle was never used).
+
+**`word_gap`** (auto-checked, same shape/check as `choice`):
+
+```jsonc
+{ "type": "word_gap",
+  "data": { "sentence": "Katė guli ant ___.", "options": ["stalo","stalas","stalą"] },
+  "answer": { "index": 0 } }
+```
+
+Renders like `choice` (big option buttons, one-retry flow) with the
+sentence as prompt and a 🔊 button beside it.
+
+**`choice` after `read_aloud`**: the existing `passage_ref` mechanism (§5.1)
+now also matches a preceding `read_aloud` item (by `id`), not just `passage`
+— the referenced item's plain `data.text` (not the syllable markup) shows in
+the same collapsible panel above the question. These comprehension
+questions also get a 🔊 button on the question text (Lilija's page only,
+gated on TTS availability like every other 🔊 button).
+
+### 13.5 `weekly_stats(learner)`
+
+`weekly_stats()` → `weekly_stats(p_learner text default 'henris')` — old
+callers passing nothing still get Henris's stats. Every existing field is
+now scoped to that learner. New fields (cheap to compute for anyone, just
+empty for a learner with no matching item types):
+
+| key | meaning |
+|---|---|
+| `avg_wpm_by_day` | `[{date, dow, avg_wpm}]` — mean `read_aloud` words/minute per day |
+| `syllable_build_accuracy_pct` | accuracy on `syllable_build` items in the window (from `by_type`) |
+| `comprehension_accuracy_pct` | accuracy on `choice` items in the window (from `by_type`) |
+| `top_error_words` | `[{word, count}]`, top 10, from `read_aloud.error_words[]` |
+
+### 13.6 Seed content
+
+One example set for testing on iPad: `seed/lilija-day1.sql`, `scheduled_date`
+= the day it was applied, `subject = 'lietuviu'`, `learner = 'lilija'`,
+`phase = 1`. 3× `syllable_build` (lapas/saulė/pienas), 1× `read_aloud`
+("Katė ir pienas"), 2× `choice` comprehension questions with `passage_ref`
+to the read_aloud item, 1× `word_gap` (the sentence from §5's own example).
+
+### 13.7 Acceptance
+
+- [x] `learner` column added to `task_sets`/`results`; `progress` is one row
+      per learner; RLS policies unchanged.
+- [x] `record_progress`/`weekly_stats` scoped per learner.
+- [x] `/lilija/` renders today's Lilija task set, one item at a time.
+- [x] `syllable_build`, `read_aloud`, `word_gap` implemented per §13.4.
+- [x] 🔊 buttons use `lt-LT` TTS, rate 0.8, hidden with no LT voice.
+- [x] Header switcher on `/` and `/lilija/`.
+- [x] Seed set applied for today; verified end-to-end.
+- [x] Lighthouse accessibility ≥ 95 on `/lilija/` (100/100, and `/` unaffected — also 100/100).

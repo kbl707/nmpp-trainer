@@ -3,18 +3,18 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>NMPP treniruotė</title>
+<title>Lilijos treniruotė</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="../styles.css" />
 </head>
-<body>
+<body class="lilija">
   <div id="app" aria-live="polite">
     <div id="app-header">
       <div class="switch">
-        <a href="/" aria-current="page">Henris</a>
-        <a href="/lilija/">Lilija</a>
+        <a href="/">Henris</a>
+        <a href="/lilija/" aria-current="page">Lilija</a>
       </div>
       <span id="stars-badge" hidden>⭐ 0</span>
       <button type="button" id="sound-toggle" aria-pressed="false" aria-label="Garsas išjungtas">🔇</button>
@@ -24,7 +24,9 @@
       <div id="progress-track"><div id="progress-fill"></div></div>
       <div id="topbar-row">
         <span id="progress-label"></span>
-        <span id="timer" role="timer" aria-label="Praėjęs laikas"></span>
+        <!-- SPEC.md §13.2: no timer visible on Lilija's page except inside
+             the read_aloud item's own reading-phase stopwatch. -->
+        <span id="timer" role="timer" aria-label="Praėjęs laikas" hidden></span>
       </div>
     </div>
     <main id="screen">
@@ -33,7 +35,8 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="config.js"></script>
-  <script src="app.js"></script>
+  <script src="../config.js"></script>
+  <script>window.NMPP_LEARNER = "lilija";</script>
+  <script src="../app.js"></script>
 </body>
 </html>

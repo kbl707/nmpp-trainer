@@ -4,6 +4,12 @@
   const CONFIG = window.NMPP_CONFIG;
   const client = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 
+  // Which learner this page is for (SPEC.md §13) — set by an inline script
+  // before app.js loads (lilija/index.html); "/" leaves it unset, defaulting
+  // to Henris so index.html needs no change.
+  const LEARNER = window.NMPP_LEARNER || "henris";
+  const TTS_ENABLED = LEARNER === "lilija";
+
   const screenEl = document.getElementById("screen");
   const topbarEl = document.getElementById("topbar");
   const progressFillEl = document.getElementById("progress-fill");
@@ -13,10 +19,10 @@
   const soundToggleEl = document.getElementById("sound-toggle");
   const praiseToastEl = document.getElementById("praise-toast");
 
-  const PROGRESS_PREFIX = "nmpp:progress:";
+  const PROGRESS_PREFIX = `nmpp:progress:${LEARNER}:`;
   const SUBJECT_LABELS = { matematika: "Matematika", lietuviu: "Lietuvių kalba", pratimai: "Pratimai" };
   const PRAISE_WORDS = ["Puiku!", "Taip!", "Šaunu!", "Tiksliai!"];
-  const SOUND_KEY = "nmpp:sound-on";
+  const SOUND_KEY = `nmpp:sound-on:${LEARNER}`;
   const BADGES = {
     pirma_savaite: { emoji: "🌟", label: "Pirma savaitė" },
     daugybos_meistras: { emoji: "🧮", label: "Daugybos meistras" },
@@ -55,6 +61,77 @@
     const wrap = document.createElement("div");
     wrap.innerHTML = html.trim();
     return wrap.firstElementChild;
+  }
+
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  // ---- text-to-speech (SPEC.md §13.3, Lilija only) ------------------------
+  // Lithuanian only. Resolved once at boot (see init()); every 🔊 button in
+  // every renderer checks `ttsVoice` and simply isn't rendered if it's null.
+
+  let ttsVoice = null;
+
+  function pickLtVoice() {
+    if (!window.speechSynthesis) return null;
+    const voices = window.speechSynthesis.getVoices();
+    return voices.find((v) => /^lt(-|_|$)/i.test(v.lang)) || null;
+  }
+
+  function initTTS() {
+    if (!TTS_ENABLED || !window.speechSynthesis) return Promise.resolve(null);
+    return new Promise((resolve) => {
+      let v = pickLtVoice();
+      if (v) return resolve(v);
+      const handle = () => {
+        v = pickLtVoice();
+        if (v) {
+          window.speechSynthesis.removeEventListener("voiceschanged", handle);
+          resolve(v);
+        }
+      };
+      window.speechSynthesis.addEventListener("voiceschanged", handle);
+      setTimeout(() => {
+        window.speechSynthesis.removeEventListener("voiceschanged", handle);
+        resolve(pickLtVoice());
+      }, 1200);
+    });
+  }
+
+  function speak(text) {
+    if (!ttsVoice || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.voice = ttsVoice;
+    u.lang = "lt-LT";
+    u.rate = 0.8;
+    window.speechSynthesis.speak(u);
+  }
+
+  function speakButton(text, label) {
+    const btn = el(`<button type="button" class="speak-btn" aria-label="${escapeHtml(label || "Ištarti")}">🔊</button>`);
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      speak(text);
+    });
+    return btn;
+  }
+
+  // Appends a 🔊 next to a rendered `.prompt` element (choice/word_gap, and
+  // comprehension questions after a read_aloud) — no-op with no LT voice.
+  function attachSpeakToPrompt(container, text, label) {
+    if (!ttsVoice) return;
+    const prompt = container.querySelector(".prompt");
+    if (!prompt) return;
+    prompt.classList.add("prompt-with-speak");
+    prompt.appendChild(speakButton(text, label));
   }
 
   // ---- rewards (SPEC.md §7.1) --------------------------------------------
@@ -177,6 +254,8 @@
     compare: "Palyginimai",
     match: "Poros",
     open_schema: "Uždaviniai",
+    syllable_build: "Skiemenų dėliojimas",
+    word_gap: "Žodžio spraga",
   };
 
   function isSaturday(dateStr) {
@@ -324,6 +403,7 @@
             total_autochecked,
             duration_seconds,
             interrupted: true,
+            learner: LEARNER,
           });
         } catch (e) {
           /* best effort — if this fails we still clear so we don't loop forever */
@@ -475,11 +555,12 @@
   }
 
   // Only looks at items already shown before this one — a passage is meant
-  // to precede the questions that reference it.
+  // to precede the questions that reference it. A `read_aloud` item (§13.4)
+  // is also a valid passage_ref target, for comprehension questions after it.
   function findPassage(refId) {
     for (let i = session.index - 1; i >= 0; i--) {
       const candidate = session.taskSet.items[i];
-      if (candidate.type === "passage" && candidate.id === refId) return candidate;
+      if ((candidate.type === "passage" || candidate.type === "read_aloud") && candidate.id === refId) return candidate;
     }
     return null;
   }
@@ -534,6 +615,7 @@
         <p class="retry-msg" hidden></p>
         ${renderHintBlock(item)}
       `;
+      attachSpeakToPrompt(container, item.prompt, "Ištarti klausimą");
       const list = container.querySelector(".choice-list");
       const nextBtn = container.querySelector("[data-primary]");
       const retryMsg = container.querySelector(".retry-msg");
@@ -780,6 +862,261 @@
         { once: true }
       );
     },
+
+    // SPEC.md §13.4 — Lilija: syllable tiles assembled into a word slot.
+    syllable_build(container, item) {
+      const syllables = item.data.syllables || [];
+      const target = item.data.target || "";
+      container.innerHTML = `
+        <p class="prompt">${escapeHtml(item.prompt || "Sudėk žodį")}</p>
+        <div class="word-slot" data-action="slot" role="button" tabindex="0" aria-label="Ištrinti paskutinį skiemenį"><span></span></div>
+        <div class="syllable-tiles"></div>
+        <button type="button" class="btn" data-primary disabled>Toliau</button>
+        <p class="retry-msg" hidden></p>
+        ${renderHintBlock(item)}
+      `;
+      const slot = container.querySelector(".word-slot");
+      const slotText = slot.querySelector("span");
+      const tilesWrap = container.querySelector(".syllable-tiles");
+      const nextBtn = container.querySelector("[data-primary]");
+      const retryMsg = container.querySelector(".retry-msg");
+      wireHint(container, item);
+
+      const order = shuffle(syllables.map((s, i) => i));
+      let built = []; // indices into `syllables`, in the order tapped
+      let attempts = 0;
+
+      function isUsed(i) {
+        return built.includes(i);
+      }
+
+      function render() {
+        tilesWrap.innerHTML = "";
+        order.forEach((i) => {
+          const used = isUsed(i);
+          const wrap = el(`<div class="syllable-tile-wrap"></div>`);
+          const tile = el(
+            `<button type="button" class="syllable-tile" aria-label="Skiemuo ${escapeHtml(syllables[i])}"${used ? " disabled" : ""}>${escapeHtml(syllables[i])}</button>`
+          );
+          if (!used) {
+            tile.addEventListener("click", () => {
+              built.push(i);
+              attempts += 1;
+              render();
+            });
+          }
+          wrap.appendChild(tile);
+          if (ttsVoice) wrap.appendChild(speakButton(syllables[i], `Ištarti skiemenį ${syllables[i]}`));
+          tilesWrap.appendChild(wrap);
+        });
+        slotText.textContent = built.map((i) => syllables[i]).join("");
+        nextBtn.disabled = built.length === 0;
+      }
+
+      slot.addEventListener("click", () => {
+        if (built.length === 0) return;
+        built.pop();
+        attempts += 1;
+        render();
+      });
+      slot.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          slot.click();
+        }
+      });
+      render();
+
+      nextBtn.addEventListener("click", () => {
+        if (built.length === 0) return;
+        submitAttempt(item, retryMsg, () => {
+          const word = built.map((i) => syllables[i]).join("");
+          return { answer: { word, attempts }, correct: word === target };
+        });
+      });
+    },
+
+    // SPEC.md §13.4 — Lilija: reading-aloud passage with a reading-only
+    // stopwatch, then a difficulty rating + optional parent error-marking
+    // screen. Non-scored (like `passage`/`open_schema`): correct is always
+    // null.
+    read_aloud(container, item) {
+      const data = item.data || {};
+      const words = String(data.text || "")
+        .split(/\s+/)
+        .filter(Boolean);
+      const wordCount = words.length;
+
+      container.innerHTML = `
+        <h2 class="passage-title">${escapeHtml(data.title || "")}</h2>
+        <button type="button" class="btn" data-action="start">Pradedu</button>
+      `;
+      const startBtn = container.querySelector('[data-action="start"]');
+      let readingStartMs = null;
+
+      startBtn.addEventListener(
+        "click",
+        () => {
+          readingStartMs = Date.now();
+          renderReading();
+        },
+        { once: true }
+      );
+
+      function renderReading() {
+        container.innerHTML = `
+          <div class="reading-head">
+            <span class="reading-timer" role="timer" aria-label="Skaitymo laikas">0:00</span>
+            <label class="plain-toggle"><input type="checkbox" /> Paprastas tekstas</label>
+          </div>
+          <div class="reading-text"></div>
+          <button type="button" class="btn" data-action="stop">Baigiau</button>
+        `;
+        const timerSpan = container.querySelector(".reading-timer");
+        const textEl = container.querySelector(".reading-text");
+        const plainToggle = container.querySelector(".plain-toggle input");
+        textEl.appendChild(buildReadingText(data.syllables || data.text || ""));
+        plainToggle.addEventListener("change", () => {
+          textEl.classList.toggle("plain", plainToggle.checked);
+        });
+        const handle = setInterval(() => {
+          timerSpan.textContent = fmtTime((Date.now() - readingStartMs) / 1000);
+        }, 1000);
+        container.querySelector('[data-action="stop"]').addEventListener(
+          "click",
+          () => {
+            clearInterval(handle);
+            const seconds = Math.round((Date.now() - readingStartMs) / 1000);
+            renderReview(seconds, textEl.cloneNode(true));
+          },
+          { once: true }
+        );
+      }
+
+      // Splits "Ma-ma vi-rė ko-šę." into word tiles; within each word,
+      // syllables alternate between the two brand colors (reset per word).
+      function buildReadingText(syllableText) {
+        const wrap = el(`<div></div>`);
+        syllableText.split(/\s+/).filter(Boolean).forEach((word, wi) => {
+          if (wi > 0) wrap.appendChild(document.createTextNode(" "));
+          const plain = word.replace(/-/g, "");
+          const tile = el(`<span class="word-tile" data-word="${escapeHtml(plain)}"></span>`);
+          word.split("-").forEach((syl, si) => {
+            const span = el(`<span class="syl ${si % 2 === 0 ? "syl-a" : "syl-b"}"></span>`);
+            span.textContent = syl;
+            tile.appendChild(span);
+          });
+          wrap.appendChild(tile);
+        });
+        return wrap;
+      }
+
+      function renderReview(seconds, textNode) {
+        container.innerHTML = `
+          <div class="reading-text review"></div>
+          <label class="parent-toggle"><input type="checkbox" /> Tėvai: pažymėti klaidas</label>
+          <p class="prompt">Ar buvo sunku?</p>
+          <div class="difficulty-row"></div>
+        `;
+        container.querySelector(".reading-text").appendChild(textNode);
+        const parentToggle = container.querySelector(".parent-toggle input");
+        const errorWords = new Set();
+        const tiles = Array.from(container.querySelectorAll(".word-tile"));
+
+        function refreshTiles() {
+          tiles.forEach((tile) => {
+            if (parentToggle.checked) {
+              tile.setAttribute("role", "button");
+              tile.setAttribute("tabindex", "0");
+              tile.classList.add("taggable");
+            } else {
+              tile.removeAttribute("role");
+              tile.removeAttribute("tabindex");
+              tile.classList.remove("taggable");
+            }
+          });
+        }
+        parentToggle.addEventListener("change", refreshTiles);
+        refreshTiles();
+
+        tiles.forEach((tile) => {
+          tile.addEventListener("click", () => {
+            if (!parentToggle.checked) return;
+            const word = tile.dataset.word;
+            const isError = tile.classList.toggle("error");
+            if (isError) errorWords.add(word);
+            else errorWords.delete(word);
+          });
+        });
+
+        const row = container.querySelector(".difficulty-row");
+        [
+          ["lengva", "Lengva"],
+          ["vidutiniskai", "Vidutiniškai"],
+          ["sunku", "Sunku"],
+        ].forEach(([value, label]) => {
+          const btn = el(`<button type="button" class="btn btn-secondary difficulty-btn">${label}</button>`);
+          btn.addEventListener(
+            "click",
+            () => {
+              if (session.submitting) return;
+              const words_per_minute = seconds > 0 ? Math.round(wordCount / (seconds / 60)) : 0;
+              finalizeItem(
+                item,
+                {
+                  seconds,
+                  word_count: wordCount,
+                  words_per_minute,
+                  self_rating: value,
+                  error_words: Array.from(errorWords),
+                },
+                null
+              );
+              nextItem();
+            },
+            { once: true }
+          );
+          row.appendChild(btn);
+        });
+      }
+    },
+
+    // SPEC.md §13.4 — Lilija: fill-the-gap sentence, same shape/check as `choice`.
+    word_gap(container, item) {
+      container.innerHTML = `
+        <p class="prompt">${escapeHtml(item.data.sentence || item.prompt || "")}</p>
+        <div class="choice-list"></div>
+        <button type="button" class="btn" data-primary disabled>Toliau</button>
+        <p class="retry-msg" hidden></p>
+        ${renderHintBlock(item)}
+      `;
+      attachSpeakToPrompt(container, item.data.sentence || item.prompt || "", "Ištarti sakinį");
+      const list = container.querySelector(".choice-list");
+      const nextBtn = container.querySelector("[data-primary]");
+      const retryMsg = container.querySelector(".retry-msg");
+      let selected = null;
+      (item.data.options || []).forEach((opt, idx) => {
+        const btn = el(`<button type="button" class="option-btn" aria-pressed="false">${escapeHtml(opt)}</button>`);
+        btn.addEventListener("click", () => {
+          selected = idx;
+          Array.from(list.children).forEach((b, i) => {
+            b.classList.toggle("selected", i === idx);
+            b.setAttribute("aria-pressed", String(i === idx));
+          });
+          nextBtn.disabled = false;
+        });
+        list.appendChild(btn);
+      });
+      wireHint(container, item);
+
+      nextBtn.addEventListener("click", () => {
+        if (selected === null) return;
+        submitAttempt(item, retryMsg, () => ({
+          answer: { index: selected },
+          correct: !!(item.answer && selected === item.answer.index),
+        }));
+      });
+    },
   };
 
   function renderNumericItem(container, item, promptText) {
@@ -879,6 +1216,7 @@
         total_autochecked,
         duration_seconds,
         interrupted: false,
+        learner: LEARNER,
       });
     } catch (e) {
       /* even if the write fails, still show the finish screen locally */
@@ -904,7 +1242,7 @@
       (async () => {
         if (!onSaturday) return null;
         try {
-          const { data, error } = await client.rpc("weekly_stats");
+          const { data, error } = await client.rpc("weekly_stats", { p_learner: LEARNER });
           if (error) throw error;
           return data;
         } catch (e) {
@@ -983,7 +1321,7 @@
 
   async function loadStarsBadge() {
     try {
-      const { data, error } = await client.from("progress").select("total_stars").eq("id", 1).single();
+      const { data, error } = await client.from("progress").select("total_stars").eq("learner", LEARNER).single();
       if (error) throw error;
       if (data) updateStarsBadge(data.total_stars);
     } catch (e) {
@@ -997,10 +1335,10 @@
     const today = todayStr();
     let taskSets = [];
     try {
-      const { data, error } = await client
-        .from("task_sets")
-        .select("*")
-        .eq("scheduled_date", today);
+      const [{ data, error }] = await Promise.all([
+        client.from("task_sets").select("*").eq("scheduled_date", today).eq("learner", LEARNER),
+        initTTS().then((v) => (ttsVoice = v)),
+      ]);
       if (error) throw error;
       taskSets = data || [];
     } catch (e) {

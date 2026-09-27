@@ -1,4 +1,4 @@
--- NMPP Daily Trainer — schema + RLS (see SPEC.md §4 and §6)
+-- NMPP Daily Trainer — schema + RLS (see SPEC.md §4, §6, §13)
 
 create extension if not exists pgcrypto;
 
@@ -9,8 +9,9 @@ create table if not exists task_sets (
   title text not null,
   items jsonb not null,          -- array of task items, see SPEC.md §5
   phase int not null default 1,  -- 1..3 (prep phases)
+  learner text not null default 'henris' check (learner in ('henris','lilija')),
   created_at timestamptz default now(),
-  unique (scheduled_date, subject)
+  unique (scheduled_date, subject, learner)
 );
 
 create table if not exists results (
@@ -22,27 +23,28 @@ create table if not exists results (
   duration_seconds int not null, -- whole session
   interrupted boolean default false, -- child abandoned mid-way
   stars_credited boolean not null default false, -- guards record_progress() against double-crediting
+  learner text not null default 'henris' check (learner in ('henris','lilija')),
   submitted_at timestamptz default now()
 );
 
--- progress: single-row lifetime rewards state (see SPEC.md §7.1).
+-- progress: one row per learner, lifetime rewards state (see SPEC.md §7.1, §13).
 create table if not exists progress (
-  id int primary key default 1,
+  learner text primary key check (learner in ('henris','lilija')),
   total_stars int not null default 0,
   streak int not null default 0,
   badges jsonb not null default '[]'::jsonb,
-  updated_at timestamptz not null default now(),
-  constraint progress_single_row check (id = 1)
+  updated_at timestamptz not null default now()
 );
 
-insert into progress (id) values (1) on conflict (id) do nothing;
+insert into progress (learner) values ('henris'), ('lilija') on conflict (learner) do nothing;
 
 alter table task_sets enable row level security;
 alter table results enable row level security;
 alter table progress enable row level security;
 
 -- task_sets: anon may only read rows up to "tomorrow" (timezone slack),
--- never see far-future task sets, and can never write.
+-- never see far-future task sets, and can never write. Same policy serves
+-- both learners — the page filters by `learner` itself (SPEC.md §13).
 create policy "anon can read near-term task_sets"
   on task_sets for select
   to anon
@@ -54,9 +56,9 @@ create policy "anon can insert results"
   to anon
   with check (true);
 
--- progress: anon may only read (for the header star badge). The only way
--- to change it is the record_progress() RPC below, which is security definer and
--- so bypasses RLS on progress/results internally, with its own validation.
+-- progress: anon may only read (for the header star badge, either learner).
+-- The only way to change it is the record_progress() RPC below, which is
+-- security definer and so bypasses RLS on progress/results internally.
 create policy "anon can read progress"
   on progress for select
   to anon
@@ -65,8 +67,10 @@ create policy "anon can read progress"
 -- record_progress: called once per completed set (from submitSession in
 -- app.js). Recomputes everything from the saved results row: stars (clamped —
 -- a correct answer is worth 1 or 2, anything else 0, whatever the client
--- wrote), the day-streak, and any newly earned badges. Guards against
--- double-crediting via results.stars_credited. See SPEC.md §7.1.
+-- wrote), the day-streak, and any newly earned badges — all scoped to the
+-- learner that set belongs to (derived from task_sets, never trusted from
+-- the client), so Henris and Lilija's progress rows are independent.
+-- Guards against double-crediting via results.stars_credited. See SPEC.md §7.1, §13.
 create or replace function record_progress(p_set_id uuid)
 returns table(total_stars int, streak int, badges jsonb, new_badges jsonb, set_stars int)
 language plpgsql
@@ -75,6 +79,7 @@ set search_path = public
 as $$
 declare
   v_result results%rowtype;
+  v_learner text;
   v_today date := (now() at time zone 'Europe/Vilnius')::date;
   v_computed_stars int;
   v_streak int := 0;
@@ -95,6 +100,8 @@ begin
     raise exception 'no results row found for set_id %', p_set_id;
   end if;
 
+  select t.learner into v_learner from task_sets t where t.id = v_result.task_set_id;
+
   -- Stars are recomputed from the stored answers and clamped: a correct
   -- answer is worth 1 or 2, anything else 0, whatever the client wrote.
   select coalesce(sum(
@@ -107,7 +114,7 @@ begin
   if v_result.stars_credited then
     -- already credited (e.g. duplicate call after a reload) — no-op
     select p.total_stars, p.streak, p.badges into total_stars, streak, badges
-    from progress p where p.id = 1;
+    from progress p where p.learner = v_learner;
     new_badges := '[]'::jsonb;
     set_stars := v_computed_stars;
     return next;
@@ -116,17 +123,18 @@ begin
 
   update results set stars_credited = true where id = v_result.id;
 
-  -- streak: walk scheduled days (that actually have a task_set) backward
-  -- from today, counting while each day has at least one completed set;
-  -- days with no task_set at all are simply absent from this list.
+  -- streak: walk this learner's scheduled days (that actually have a
+  -- task_set) backward from today, counting while each day has at least one
+  -- completed set; days with no task_set at all are simply absent from this
+  -- list.
   for v_day in (
     select d.scheduled_date,
       exists(
         select 1 from results r2
         join task_sets t2 on t2.id = r2.task_set_id
-        where t2.scheduled_date = d.scheduled_date and r2.interrupted = false
+        where t2.scheduled_date = d.scheduled_date and t2.learner = v_learner and r2.interrupted = false
       ) as completed
-    from (select distinct scheduled_date from task_sets where scheduled_date <= v_today) d
+    from (select distinct scheduled_date from task_sets where scheduled_date <= v_today and learner = v_learner) d
     order by d.scheduled_date desc
   ) loop
     if v_day.completed then
@@ -136,22 +144,26 @@ begin
     end if;
   end loop;
 
-  select p.badges into v_existing_badges from progress p where p.id = 1;
+  select p.badges into v_existing_badges from progress p where p.learner = v_learner;
 
-  select count(*) into v_completed_count from results where interrupted = false;
+  select count(*) into v_completed_count
+  from results r join task_sets t on t.id = r.task_set_id
+  where r.interrupted = false and t.learner = v_learner;
 
   select count(*) into v_quickmath_fast_count
   from results r
   join task_sets t on t.id = r.task_set_id
   cross join lateral jsonb_array_elements(r.answers) ans
   join lateral jsonb_array_elements(t.items) itm on itm->>'id' = ans->>'item_id'
-  where itm->>'type' = 'quick_math'
+  where t.learner = v_learner
+    and itm->>'type' = 'quick_math'
     and (ans->>'correct')::boolean is true
     and (ans->>'seconds')::numeric < 5;
 
   select exists(
-    select 1 from results
-    where interrupted = false and total_autochecked > 0 and correct_count = total_autochecked
+    select 1 from results r join task_sets t on t.id = r.task_set_id
+    where r.interrupted = false and t.learner = v_learner
+      and r.total_autochecked > 0 and r.correct_count = r.total_autochecked
   ) into v_has_perfect;
 
   if v_completed_count >= 5 and not (v_existing_badges @> '["pirma_savaite"]') then
@@ -175,7 +187,7 @@ begin
           from jsonb_array_elements_text(progress.badges || v_new_badges) b
         ),
         updated_at = now()
-    where id = 1
+    where learner = v_learner
     returning progress.total_stars, progress.streak, progress.badges
     into total_stars, streak, badges;
 
@@ -200,9 +212,14 @@ $$;
 
 grant execute on function add_stars(uuid, int) to anon;
 
--- weekly_stats: aggregates only for the last 7 Vilnius-local days (SPEC.md §7.2).
--- Security definer so it can read results, but it never returns raw answers.
-create or replace function weekly_stats()
+-- weekly_stats(learner): aggregates only for the last 7 Vilnius-local days,
+-- scoped to one learner (SPEC.md §7.2, §13). Security definer so it can read
+-- results, but it never returns raw answers. Defaults to 'henris' so old
+-- clients calling weekly_stats() with no args keep working. The Lilija-only
+-- fields (avg_wpm_by_day, syllable_build_accuracy_pct,
+-- comprehension_accuracy_pct, top_error_words) are cheap to compute for
+-- everyone and are simply empty/null for a learner with no such items.
+create or replace function weekly_stats(p_learner text default 'henris')
 returns jsonb
 language sql
 stable
@@ -216,6 +233,7 @@ as $$
     join task_sets t on t.id = r.task_set_id
     cross join today
     where r.interrupted = false
+      and t.learner = p_learner
       and t.scheduled_date between today.d - 6 and today.d
   ),
   ans as (
@@ -258,6 +276,34 @@ as $$
     from scored
     where itype is not null
     group by itype
+  ),
+  -- Lilija extras (SPEC.md §13): read_aloud answers carry words_per_minute
+  -- and error_words[] inside `answer` (never scored/autochecked, so they
+  -- don't appear in `scored` above).
+  wpm_rows as (
+    select scheduled_date, (a->'answer'->>'words_per_minute')::numeric as wpm
+    from ans
+    where itype = 'read_aloud' and a->'answer'->>'words_per_minute' is not null
+  ),
+  wpm_by_day as (
+    select scheduled_date, extract(isodow from scheduled_date)::int as dow,
+      round(avg(wpm), 1) as avg_wpm
+    from wpm_rows
+    group by scheduled_date
+  ),
+  error_words as (
+    select trim(both '"' from w::text) as word
+    from ans
+    cross join lateral jsonb_array_elements(coalesce(a->'answer'->'error_words', '[]'::jsonb)) w
+    where itype = 'read_aloud'
+  ),
+  top_errors as (
+    select word, count(*)::int as n
+    from error_words
+    where word <> ''
+    group by word
+    order by n desc, word
+    limit 10
   )
   select jsonb_build_object(
     'sets_completed', (select count(*) from done),
@@ -275,8 +321,13 @@ as $$
     'by_type', coalesce((select jsonb_agg(to_jsonb(t) order by t.total desc) from by_type t), '[]'::jsonb),
     'by_day', coalesce((select jsonb_agg(jsonb_build_object(
         'date', scheduled_date, 'dow', dow, 'total', total, 'correct', correct,
-        'accuracy_pct', accuracy_pct, 'avg_seconds', avg_seconds) order by scheduled_date) from by_day), '[]'::jsonb)
+        'accuracy_pct', accuracy_pct, 'avg_seconds', avg_seconds) order by scheduled_date) from by_day), '[]'::jsonb),
+    'avg_wpm_by_day', coalesce((select jsonb_agg(jsonb_build_object(
+        'date', scheduled_date, 'dow', dow, 'avg_wpm', avg_wpm) order by scheduled_date) from wpm_by_day), '[]'::jsonb),
+    'syllable_build_accuracy_pct', (select accuracy_pct from by_type where type = 'syllable_build' limit 1),
+    'comprehension_accuracy_pct', (select accuracy_pct from by_type where type = 'choice' limit 1),
+    'top_error_words', coalesce((select jsonb_agg(jsonb_build_object('word', word, 'count', n)) from top_errors), '[]'::jsonb)
   );
 $$;
 
-grant execute on function weekly_stats() to anon;
+grant execute on function weekly_stats(text) to anon;

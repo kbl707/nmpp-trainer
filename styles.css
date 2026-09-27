@@ -641,3 +641,198 @@ a.btn {
     min-height: 44px;
   }
 }
+
+/* ---- Header learner switcher (SPEC.md §13.2, matches /h ↔ /l pages) ---- */
+
+#app-header .switch {
+  display: flex;
+  border: 1.5px solid var(--ink);
+  border-radius: 20px;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+#app-header .switch a {
+  padding: 5px 14px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+#app-header .switch a[aria-current="page"] {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* ---- 🔊 speak buttons (SPEC.md §13.3) ---------------------------------- */
+
+.speak-btn {
+  font-family: inherit;
+  font-size: 20px;
+  line-height: 1;
+  padding: 8px;
+  min-height: 44px;
+  min-width: 44px;
+  border-radius: 10px;
+  border: 2px solid var(--grid-line);
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.prompt-with-speak {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+/* ---- syllable_build (SPEC.md §13.4) ------------------------------------ */
+
+.word-slot {
+  min-height: 64px;
+  border: 2px dashed var(--accent);
+  border-radius: 12px;
+  background: var(--ok-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  margin-bottom: 18px;
+}
+
+.syllable-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+
+.syllable-tile-wrap {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.syllable-tile {
+  font-family: inherit;
+  font-size: 22px;
+  font-weight: 700;
+  padding: 14px 18px;
+  min-height: 56px;
+  border-radius: 12px;
+  border: 2px solid var(--grid-line);
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.syllable-tile:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* ---- read_aloud (SPEC.md §13.4) ---------------------------------------- */
+
+.reading-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.reading-timer {
+  font-weight: 700;
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.plain-toggle,
+.parent-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.plain-toggle input,
+.parent-toggle input {
+  width: 22px;
+  height: 22px;
+}
+
+.parent-toggle {
+  justify-content: center;
+  margin: 4px 0 20px;
+}
+
+.reading-text {
+  font-size: 26px;
+  line-height: 1.9;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.word-tile {
+  display: inline-block;
+}
+
+.word-tile.taggable {
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.word-tile.taggable:hover {
+  background: var(--ok-bg);
+}
+
+.word-tile.error {
+  text-decoration: underline;
+  text-decoration-color: #c0392b;
+  text-decoration-thickness: 3px;
+  text-underline-offset: 4px;
+}
+
+.reading-text.plain .syl {
+  color: var(--ink);
+}
+
+.syl-a { color: var(--ink); }
+.syl-b { color: var(--accent); }
+
+.difficulty-row {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.difficulty-btn {
+  margin-top: 0;
+}
+
+/* ---- Lilija page (SPEC.md §13.2): base 22px, reading text 26px, ---- */
+/* ---- buttons/tiles >= 64px tall. ---- */
+
+body.lilija {
+  font-size: 22px;
+}
+
+body.lilija .prompt {
+  font-size: 26px;
+}
+
+body.lilija .btn,
+body.lilija .option-btn,
+body.lilija .match-item,
+body.lilija .syllable-tile,
+body.lilija .pair-undo,
+body.lilija .difficulty-btn,
+body.lilija #sound-toggle,
+body.lilija .speak-btn {
+  min-height: 64px;
+}
