@@ -358,6 +358,35 @@ a.btn {
   margin-top: 16px;
 }
 
+.think-lock {
+  margin-top: 10px;
+  height: 4px;
+  background: var(--grid-line);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.think-lock-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+}
+
+.reveal {
+  margin-top: 18px;
+  text-align: center;
+}
+
+.reveal-answer {
+  font-weight: 700;
+}
+
+.reveal-hint {
+  margin-top: 6px;
+  font-style: italic;
+  opacity: 0.9;
+}
+
 .hint-btn {
   display: block;
   margin: 18px auto 0;

@@ -176,12 +176,11 @@ Single-family app, no auth, but the anon key is public in the page source:
 - **One primary button per item: „Toliau“** (no separate check/next pair).
   Auto-checked items (`quick_math`, `number_input`, `choice`, `compare`,
   `match`): pressing it checks the answer. Correct → praise flash and
-  advance at once. Wrong → stay on the item, show „Pabandyk dar kartą“ and
-  keep the answer editable; the second press records the answer as final
-  (correct or not) and advances. It stays disabled until there is something
-  to check (a typed value, a selected option, all pairs made); Enter on an
-  empty numeric field shows „Įrašyk atsakymą“ and never records anything.
-  Self-marked items (`open_schema`, `printable`) keep their single
+  advance at once. Wrong → the anti-guessing retry flow in §7.3 (up to 4
+  attempts, no answer reveal until the 4th). It stays disabled until there
+  is something to check (a typed value, a selected option, all pairs made);
+  Enter on an empty numeric field shows „Įrašyk atsakymą“ and never records
+  anything. Self-marked items (`open_schema`, `printable`) keep their single
   „Padariau ✔“ and `passage` its single „Toliau“, which advance directly.
   Enter = the item's primary button.
 - **One task visible at a time**, progress shown as
@@ -192,8 +191,9 @@ Single-family app, no auth, but the anon key is public in the page source:
 - A visible but calm elapsed-time indicator (no countdown pressure), used to
   fill `duration_seconds` and per-item `seconds`.
 - End screen: star + „Šiandien — atlikta!“ + correct count for auto-checked
-  items. No red X-marks during solving; incorrect auto-checked answers get one
-  gentle retry („Pabandyk dar kartą“), then move on and record as incorrect.
+  items. No red X-marks during solving; a wrong auto-checked answer follows
+  the anti-guessing retry flow (§7.3) — up to 4 attempts before the answer
+  is ever shown, then move on and record as incorrect.
 - Responsive: must work on a tablet and a laptop.
 
 ### Lithuanian UI strings
@@ -201,8 +201,10 @@ Single-family app, no auth, but the anon key is public in the page source:
 - Loading: `Kraunama…`
 - No tasks today: `Šiandien užduočių nėra. Laisva diena! 🎉`
 - Next: `Toliau`
-- Retry prompt: `Pabandyk dar kartą`
+- Retry prompt (`word_gap`/`syllable_build`, §13.4): `Pabandyk dar kartą`
+- Retry prompt (§7.3 — quick_math/number_input/choice/compare/match): `Dar kartą. Skaičiuok sąsiuvinyje.`
 - Empty answer nudge: `Įrašyk atsakymą`
+- Revealed answer (§7.3): `Teisingas atsakymas: {answer}`
 - Self-mark done: `Padariau ✔`
 - Hint: `Užuomina`
 - Finish screen: `Šiandien — atlikta!` / `Teisingai: {n} iš {m}`
@@ -217,7 +219,9 @@ an item is checked or scored; it only adds positive feedback on top.
 correct, show a brief green check + one random short Lithuanian praise word
 (`Puiku!`, `Taip!`, `Šaunu!`, `Tiksliai!`) for ~800ms. No sound unless the
 header sound toggle is on (see **Sound** below).
-Stars per item: first-try correct → 2 ⭐, correct after the one retry → 1 ⭐.
+Stars per item: first-try correct → 2 ⭐, correct on any later retry → 1 ⭐
+(how many retries an item allows before giving up depends on its type —
+§7.3 for the five anti-guessing types, §13.4 for Lilija's own types).
 Wrong answers never show a star count or a 0 — same "no harsh feedback"
 rule as everywhere else in the app.
 
@@ -307,6 +311,47 @@ chart (no library) of items solved per day, one bar per school day
 spells out the numbers. Noun forms follow Lithuanian number agreement
 (1 užduotį / 2–9 užduotis / 10–19, 20… užduočių).
 
+## 7.3 Anti-guessing retry flow
+
+Applies to `quick_math`, `number_input`, `choice`, `compare`, `match` only
+(for either learner — these five are shared code, so this also governs
+`choice` when it's used as a reading-comprehension question on
+`/lilija/`). `open_schema`, `passage`, `printable` are unaffected, and so
+are Lilija's own item types `syllable_build`/`word_gap`/`read_aloud`
+(§13.4), which keep the older one-retry flow (§7, `submitAttempt`)
+unchanged. Still one button, „Toliau“.
+
+**Think time.** For `number_input`, `quick_math` and `compare` only,
+„Toliau“ is disabled for 6s after the item renders — a thin progress line
+under the button fills over that time, no countdown numbers. `choice` and
+`match` have no delay.
+
+**Up to 4 attempts.** A wrong answer stays on the item: the input is
+cleared / the selection or pairing is reset (the correct answer is never
+revealed early), and „Dar kartą. Skaičiuok sąsiuvinyje.“ shows below.
+Locked types re-apply the 6s think-lock before the next attempt can be
+submitted. Only after the 4th wrong attempt does the item show
+„Teisingas atsakymas: {the correct answer}“ plus `hint` (if the item has
+one) as a one-line explanation, and „Toliau“ unlocks immediately — one more
+press just advances, it doesn't check anything further.
+
+**Scoring.** Correct on attempt 1 → 2 ⭐ (unchanged from §7.1). Correct on
+attempts 2–4 → 1 ⭐. Never correct within 4 attempts → 0 ⭐, not shown
+(same "no harsh feedback" rule as everywhere else), and the item doesn't
+count toward `correct_count`.
+
+**Recorded per item**, alongside the existing `item_id`/`answer`/`correct`/
+`seconds`/`stars` (§4/§7.1): `attempts` (1–4, how many real checks it took)
+and `first_answer` (the shape returned by the item's own `evaluate()` —
+e.g. `{value: 5}`, `{index: 1}`, `{pairs: [...]}` — whatever was submitted
+on attempt 1, even though `answer` itself always ends up holding the
+*final* submission). Additionally, `rushed: true` is set when the first
+attempt arrived under 4s after the item rendered *and* was wrong — a quiet
+signal for the weekly feedback loop, never shown to the child. (In
+practice this can only fire on `choice`/`match`, since the three locked
+types can't submit before 6s.) No schema change: these are just additional
+keys inside the existing `answers[]` jsonb.
+
 ## 8. Pages / routes
 
 - `/` (index.html): today's task sets (usually one). If both subjects exist for
@@ -366,7 +411,11 @@ stable and versionless-tolerant (unknown fields ignored).
 ## 12. Acceptance checklist
 
 - [ ] Opening the page on a day with a seeded task set shows tasks one-by-one, in order.
-- [ ] Auto-checked wrong answer → one retry → recorded incorrect, no harsh feedback.
+- [ ] Wrong answer on `quick_math`/`number_input`/`choice`/`compare`/`match`
+      → up to 4 attempts, answer never revealed early, no harsh feedback;
+      exhausted → reveals the correct answer + hint and records incorrect
+      (§7.3). `open_schema`/`passage`/`printable`/Lilija's own types (§13.4)
+      unaffected.
 - [ ] Submitting writes one `results` row with per-item seconds and total duration.
 - [ ] Reload mid-session restores progress (localStorage autosave).
 - [ ] Anon key cannot read `results` or future (`> tomorrow`) `task_sets` (test via curl).

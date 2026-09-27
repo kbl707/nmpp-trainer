@@ -126,6 +126,15 @@ per item, best/fastest day, stars, accuracy by item type) — no raw answers.
 When the set just finished is scheduled on a Saturday, the end screen shows a
 „Tavo savaitė“ card with those numbers and an inline-SVG bar chart (Pr–Še).
 
+### Anti-guessing retry flow (SPEC.md §7.3)
+
+`quick_math`/`number_input`/`compare` get a 6s "Toliau" lock on render and
+after every wrong attempt (thin progress line, no countdown); `choice` and
+`match` have no lock — all five allow up to 4 attempts before revealing the
+answer + `hint`. No DB change: `attempts`/`first_answer`/`rushed` are just
+extra keys inside the existing `answers[]` jsonb. Lilija's own item types
+(`syllable_build`/`word_gap`/`read_aloud`) keep the original one-retry flow.
+
 ## Notes on behavior
 
 - Only one row of `task_sets` per `(scheduled_date, subject)` — insert with

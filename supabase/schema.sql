@@ -17,7 +17,8 @@ create table if not exists task_sets (
 create table if not exists results (
   id uuid primary key default gen_random_uuid(),
   task_set_id uuid references task_sets(id) not null,
-  answers jsonb not null,        -- [{item_id, answer, correct|null, seconds, stars}]
+  answers jsonb not null,        -- [{item_id, answer, correct|null, seconds, stars,
+                                  --   attempts?, first_answer?, rushed?}] — see SPEC.md §7.3
   correct_count int not null,
   total_autochecked int not null,
   duration_seconds int not null, -- whole session

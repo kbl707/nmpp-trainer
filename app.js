@@ -475,16 +475,12 @@
     });
   }
 
-  function finalizeItem(item, answerValue, correct) {
+  function finalizeItem(item, answerValue, correct, extra) {
     const seconds = Math.round((Date.now() - session.itemStartMs) / 1000);
     const stars = correct ? (session.attempt <= 1 ? 2 : 1) : 0;
-    session.answers.push({
-      item_id: item.id,
-      answer: answerValue,
-      correct: correct,
-      seconds,
-      stars,
-    });
+    const entry = { item_id: item.id, answer: answerValue, correct: correct, seconds, stars };
+    if (extra) Object.assign(entry, extra);
+    session.answers.push(entry);
     persistSession();
     if (stars > 0) showPraiseToast(stars);
     if (correct === true) playTick();
@@ -505,6 +501,78 @@
     retryMsg.textContent = "Pabandyk dar kartą";
     retryMsg.hidden = false;
     return false;
+  }
+
+  // ---- anti-guessing retry flow (SPEC.md §7.3) -----------------------------
+  // quick_math, number_input, choice, compare, match only. Up to 4 attempts;
+  // correct → advance immediately. Wrong with attempts left → caller clears
+  // its own UI and (for the three locked types) re-applies the think-lock.
+  // Wrong on the 4th → recorded incorrect and reported "exhausted" so the
+  // caller can reveal the answer + hint instead of advancing.
+
+  const MAX_ATTEMPTS = 4;
+  const THINK_LOCK_MS = 6000;
+  const RUSHED_THRESHOLD_MS = 4000;
+
+  function submitScoredAttempt(item, retryMsg, evaluate) {
+    if (!session || session.submitting) return "retry";
+    const now = Date.now();
+    session.attempt += 1;
+    const { answer, correct } = evaluate();
+    if (session.attempt === 1) {
+      session.firstAnswer = answer;
+      session.firstRushed = !correct && now - session.itemStartMs < RUSHED_THRESHOLD_MS;
+    }
+    const extra = {
+      attempts: session.attempt,
+      first_answer: session.firstAnswer,
+      ...(session.firstRushed ? { rushed: true } : {}),
+    };
+    if (correct) {
+      finalizeItem(item, answer, true, extra);
+      nextItem();
+      return "correct";
+    }
+    if (session.attempt >= MAX_ATTEMPTS) {
+      finalizeItem(item, answer, false, extra);
+      return "exhausted";
+    }
+    retryMsg.textContent = "Dar kartą. Skaičiuok sąsiuvinyje.";
+    retryMsg.hidden = false;
+    return "retry";
+  }
+
+  // (Re)starts the 6s think-lock: the fill animates via a CSS transition
+  // (no countdown numbers), `onUnlock` fires once, after which the caller
+  // decides whether the button can actually enable (e.g. is there still a
+  // typed value / selection).
+  function startThinkLock(fillEl, onUnlock) {
+    fillEl.style.transition = "none";
+    fillEl.style.width = "0%";
+    void fillEl.offsetWidth; // force reflow so the reset above isn't animated
+    requestAnimationFrame(() => {
+      fillEl.style.transition = `width ${THINK_LOCK_MS}ms linear`;
+      fillEl.style.width = "100%";
+    });
+    setTimeout(onUnlock, THINK_LOCK_MS);
+  }
+
+  function revealBlock(answerHtml, hint) {
+    return `
+      <div class="reveal">
+        <p class="reveal-answer">Teisingas atsakymas: <b>${answerHtml}</b></p>
+        ${hint ? `<p class="reveal-hint">${escapeHtml(hint)}</p>` : ""}
+      </div>
+    `;
+  }
+
+  // The reveal block already shows `hint` as the explanation — hide the
+  // now-redundant on-demand "Užuomina" toggle (and its text, if already open).
+  function hideHintOnReveal(container) {
+    const btn = container.querySelector('[data-action="hint"]');
+    if (btn) btn.hidden = true;
+    const text = container.querySelector(".hint-text");
+    if (text) text.hidden = true;
   }
 
   // Enter = the item's primary button, unless focus is already on a
@@ -534,6 +602,8 @@
   function renderCurrentItem() {
     session.itemStartMs = Date.now();
     session.attempt = 0;
+    session.firstAnswer = undefined;
+    session.firstRushed = false;
     updateTopbar();
     const item = session.taskSet.items[session.index];
     const type = item.type || "open_schema";
@@ -620,9 +690,11 @@
       const nextBtn = container.querySelector("[data-primary]");
       const retryMsg = container.querySelector(".retry-msg");
       let selected = null;
+      let revealed = false;
       (item.data.options || []).forEach((opt, idx) => {
         const btn = el(`<button type="button" class="option-btn" aria-pressed="false">${escapeHtml(opt)}</button>`);
         btn.addEventListener("click", () => {
+          if (revealed) return;
           selected = idx;
           Array.from(list.children).forEach((b, i) => {
             b.classList.toggle("selected", i === idx);
@@ -635,11 +707,32 @@
       wireHint(container, item);
 
       nextBtn.addEventListener("click", () => {
+        if (revealed) {
+          nextItem();
+          return;
+        }
         if (selected === null) return;
-        submitAttempt(item, retryMsg, () => ({
+        const result = submitScoredAttempt(item, retryMsg, () => ({
           answer: { index: selected },
           correct: !!(item.answer && selected === item.answer.index),
         }));
+        if (result === "exhausted") {
+          revealed = true;
+          hideHintOnReveal(container);
+          retryMsg.hidden = true;
+          Array.from(list.children).forEach((b) => (b.disabled = true));
+          const correctText =
+            item.data.options && item.answer ? item.data.options[item.answer.index] : "";
+          container.insertAdjacentHTML("beforeend", revealBlock(escapeHtml(correctText), item.hint));
+          nextBtn.disabled = false;
+        } else if (result === "retry") {
+          selected = null;
+          nextBtn.disabled = true;
+          Array.from(list.children).forEach((b) => {
+            b.classList.remove("selected");
+            b.setAttribute("aria-pressed", "false");
+          });
+        }
       });
     },
 
@@ -648,13 +741,28 @@
         <p class="prompt">${item.data.left} &nbsp;&nbsp;?&nbsp;&nbsp; ${item.data.right}</p>
         <div class="compare-row"></div>
         <button type="button" class="btn" data-primary disabled>Toliau</button>
+        <div class="think-lock" aria-hidden="true"><div class="think-lock-fill"></div></div>
         <p class="retry-msg" hidden></p>
         ${renderHintBlock(item)}
       `;
       const row = container.querySelector(".compare-row");
       const nextBtn = container.querySelector("[data-primary]");
       const retryMsg = container.querySelector(".retry-msg");
+      const lockBar = container.querySelector(".think-lock");
+      const lockFill = container.querySelector(".think-lock-fill");
       let selected = null;
+      let locked = true;
+      let revealed = false;
+
+      function reapplyLock() {
+        locked = true;
+        nextBtn.disabled = true;
+        startThinkLock(lockFill, () => {
+          locked = false;
+          nextBtn.disabled = selected === null;
+        });
+      }
+
       ["<", ">", "="].forEach((sign) => {
         const btn = el(
           `<button type="button" class="option-btn compare-btn" aria-pressed="false" aria-label="${
@@ -662,24 +770,49 @@
           }">${sign}</button>`
         );
         btn.addEventListener("click", () => {
+          if (revealed) return;
           selected = sign;
           Array.from(row.children).forEach((b) => {
             const on = b === btn;
             b.classList.toggle("selected", on);
             b.setAttribute("aria-pressed", String(on));
           });
-          nextBtn.disabled = false;
+          if (!locked) nextBtn.disabled = false;
         });
         row.appendChild(btn);
       });
       wireHint(container, item);
+      reapplyLock();
 
       nextBtn.addEventListener("click", () => {
-        if (selected === null) return;
-        submitAttempt(item, retryMsg, () => ({
+        if (revealed) {
+          nextItem();
+          return;
+        }
+        if (locked || selected === null) return;
+        const result = submitScoredAttempt(item, retryMsg, () => ({
           answer: { sign: selected },
           correct: !!(item.answer && selected === item.answer.sign),
         }));
+        if (result === "exhausted") {
+          revealed = true;
+          hideHintOnReveal(container);
+          lockBar.hidden = true;
+          retryMsg.hidden = true;
+          Array.from(row.children).forEach((b) => (b.disabled = true));
+          container.insertAdjacentHTML(
+            "beforeend",
+            revealBlock(`${item.data.left} ${item.answer.sign} ${item.data.right}`, item.hint)
+          );
+          nextBtn.disabled = false;
+        } else if (result === "retry") {
+          selected = null;
+          Array.from(row.children).forEach((b) => {
+            b.classList.remove("selected");
+            b.setAttribute("aria-pressed", "false");
+          });
+          reapplyLock();
+        }
       });
     },
 
@@ -710,6 +843,7 @@
 
       let pairs = []; // [[leftIdx, rightIdx], ...] in the order they were made
       let pendingLeft = null;
+      let revealed = false;
 
       function render() {
         const pairedLeft = new Set(pairs.map((p) => p[0]));
@@ -768,8 +902,12 @@
       }
 
       checkBtn.addEventListener("click", () => {
+        if (revealed) {
+          nextItem();
+          return;
+        }
         if (pairs.length !== left.length) return;
-        submitAttempt(item, retryMsg, () => {
+        const result = submitScoredAttempt(item, retryMsg, () => {
           const wanted = (item.answer && item.answer.pairs) || [];
           const wantedSet = new Set(wanted.map((p) => p[0] + ":" + p[1]));
           const gotSet = new Set(pairs.map((p) => p[0] + ":" + p[1]));
@@ -778,6 +916,24 @@
             correct: wantedSet.size === gotSet.size && [...wantedSet].every((p) => gotSet.has(p)),
           };
         });
+        if (result === "exhausted") {
+          revealed = true;
+          hideHintOnReveal(container);
+          retryMsg.hidden = true;
+          leftCol.querySelectorAll("button").forEach((b) => (b.disabled = true));
+          rightCol.querySelectorAll("button").forEach((b) => (b.disabled = true));
+          pairedList.querySelectorAll("button").forEach((b) => (b.disabled = true));
+          const wanted = (item.answer && item.answer.pairs) || [];
+          const correctText = wanted
+            .map(([l, r]) => `${escapeHtml(left[l])} — ${escapeHtml(right[r])}`)
+            .join(", ");
+          container.insertAdjacentHTML("beforeend", revealBlock(correctText, item.hint));
+          checkBtn.disabled = false;
+        } else if (result === "retry") {
+          pairs = [];
+          pendingLeft = null;
+          render();
+        }
       });
       render();
     },
@@ -1124,6 +1280,7 @@
       <p class="prompt">${escapeHtml(promptText)}</p>
       <input type="number" inputmode="numeric" autocomplete="off" aria-label="Atsakymas" />
       <button type="button" class="btn" data-primary disabled>Toliau</button>
+      <div class="think-lock" aria-hidden="true"><div class="think-lock-fill"></div></div>
       <p class="retry-msg" hidden></p>
       ${renderHintBlock(item)}
     `;
@@ -1131,16 +1288,36 @@
     const input = container.querySelector("input");
     const nextBtn = container.querySelector("[data-primary]");
     const retryMsg = container.querySelector(".retry-msg");
+    const lockBar = container.querySelector(".think-lock");
+    const lockFill = container.querySelector(".think-lock-fill");
     input.focus();
 
+    let locked = true;
+    let revealed = false;
+
+    function reapplyLock() {
+      locked = true;
+      nextBtn.disabled = true;
+      startThinkLock(lockFill, () => {
+        locked = false;
+        nextBtn.disabled = input.value.trim() === "";
+      });
+    }
+
     input.addEventListener("input", () => {
-      nextBtn.disabled = input.value.trim() === "";
+      if (!locked) nextBtn.disabled = input.value.trim() === "";
       if (input.value.trim() !== "") retryMsg.hidden = true;
     });
+    reapplyLock();
 
     // Never record an answer the child did not type: an empty field only
-    // nudges, it doesn't consume an attempt.
+    // nudges, it doesn't consume an attempt (and does nothing while locked).
     function press() {
+      if (revealed) {
+        nextItem();
+        return;
+      }
+      if (locked) return;
       const raw = input.value.trim();
       if (raw === "") {
         retryMsg.textContent = "Įrašyk atsakymą";
@@ -1148,13 +1325,25 @@
         return;
       }
       const val = Number(raw);
-      const advanced = submitAttempt(item, retryMsg, () => ({
+      const result = submitScoredAttempt(item, retryMsg, () => ({
         answer: { value: Number.isNaN(val) ? raw : val },
         correct: !Number.isNaN(val) && val === item.answer.value,
       }));
-      if (!advanced) {
+      if (result === "exhausted") {
+        revealed = true;
+        hideHintOnReveal(container);
+        lockBar.hidden = true;
+        retryMsg.hidden = true;
+        input.disabled = true;
+        container.insertAdjacentHTML(
+          "beforeend",
+          revealBlock(escapeHtml(String(item.answer.value)), item.hint)
+        );
+        nextBtn.disabled = false;
+      } else if (result === "retry") {
+        input.value = "";
+        reapplyLock();
         input.focus();
-        input.select();
       }
     }
 
