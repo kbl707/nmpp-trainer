@@ -134,6 +134,11 @@ after every wrong attempt (thin progress line, no countdown); `choice` and
 answer + `hint`. No DB change: `attempts`/`first_answer`/`rushed` are just
 extra keys inside the existing `answers[]` jsonb. Lilija's own item types
 (`syllable_build`/`word_gap`/`read_aloud`) keep the original one-retry flow.
+The retry wording differs per learner (`choice` is shared code, and it's
+the only one of the five types reachable on her page, for reading
+comprehension) — same mechanic, `SCORED_RETRY_MSG` just picks
+"Dar kartą. Skaičiuok sąsiuvinyje." for Henris vs "Dar kartą. Paskaityk
+tekstą." for Lilija.
 
 ## Notes on behavior
 

@@ -513,6 +513,12 @@
   const MAX_ATTEMPTS = 4;
   const THINK_LOCK_MS = 6000;
   const RUSHED_THRESHOLD_MS = 4000;
+  // Same mechanic for both learners, different wording: on Henris's page
+  // this flow only ever fires for math-context items; on Lilija's page the
+  // only reachable type is `choice` (reading comprehension), where
+  // "calculate in your notebook" doesn't fit.
+  const SCORED_RETRY_MSG =
+    LEARNER === "lilija" ? "Dar kartą. Paskaityk tekstą." : "Dar kartą. Skaičiuok sąsiuvinyje.";
 
   function submitScoredAttempt(item, retryMsg, evaluate) {
     if (!session || session.submitting) return "retry";
@@ -537,7 +543,7 @@
       finalizeItem(item, answer, false, extra);
       return "exhausted";
     }
-    retryMsg.textContent = "Dar kartą. Skaičiuok sąsiuvinyje.";
+    retryMsg.textContent = SCORED_RETRY_MSG;
     retryMsg.hidden = false;
     return "retry";
   }

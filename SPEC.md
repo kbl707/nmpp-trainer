@@ -202,7 +202,8 @@ Single-family app, no auth, but the anon key is public in the page source:
 - No tasks today: `Šiandien užduočių nėra. Laisva diena! 🎉`
 - Next: `Toliau`
 - Retry prompt (`word_gap`/`syllable_build`, §13.4): `Pabandyk dar kartą`
-- Retry prompt (§7.3 — quick_math/number_input/choice/compare/match): `Dar kartą. Skaičiuok sąsiuvinyje.`
+- Retry prompt (§7.3 — quick_math/number_input/choice/compare/match), Henris: `Dar kartą. Skaičiuok sąsiuvinyje.`
+- Retry prompt (§7.3), Lilija — same mechanic, reading-appropriate wording (only `choice` is reachable on her page): `Dar kartą. Paskaityk tekstą.`
 - Empty answer nudge: `Įrašyk atsakymą`
 - Revealed answer (§7.3): `Teisingas atsakymas: {answer}`
 - Self-mark done: `Padariau ✔`
@@ -328,9 +329,13 @@ under the button fills over that time, no countdown numbers. `choice` and
 
 **Up to 4 attempts.** A wrong answer stays on the item: the input is
 cleared / the selection or pairing is reset (the correct answer is never
-revealed early), and „Dar kartą. Skaičiuok sąsiuvinyje.“ shows below.
-Locked types re-apply the 6s think-lock before the next attempt can be
-submitted. Only after the 4th wrong attempt does the item show
+revealed early), and a retry line shows below — „Dar kartą. Skaičiuok
+sąsiuvinyje.“ on Henris's page, „Dar kartą. Paskaityk tekstą.“ on
+Lilija's (only `choice` is reachable there, so the math-flavored wording
+never applies to her reading-comprehension questions; same mechanic,
+just `SCORED_RETRY_MSG` keyed off `LEARNER`). Locked types re-apply the
+6s think-lock before the next attempt can be submitted. Only after the
+4th wrong attempt does the item show
 „Teisingas atsakymas: {the correct answer}“ plus `hint` (if the item has
 one) as a one-line explanation, and „Toliau“ unlocks immediately — one more
 press just advances, it doesn't check anything further.
