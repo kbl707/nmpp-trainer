@@ -552,15 +552,15 @@
   // (no countdown numbers), `onUnlock` fires once, after which the caller
   // decides whether the button can actually enable (e.g. is there still a
   // typed value / selection).
-  function startThinkLock(fillEl, onUnlock) {
+  function startThinkLock(fillEl, onUnlock, durationMs = THINK_LOCK_MS) {
     fillEl.style.transition = "none";
     fillEl.style.width = "0%";
     void fillEl.offsetWidth; // force reflow so the reset above isn't animated
     requestAnimationFrame(() => {
-      fillEl.style.transition = `width ${THINK_LOCK_MS}ms linear`;
+      fillEl.style.transition = `width ${durationMs}ms linear`;
       fillEl.style.width = "100%";
     });
-    setTimeout(onUnlock, THINK_LOCK_MS);
+    setTimeout(onUnlock, durationMs);
   }
 
   function revealBlock(answerHtml, hint) {
@@ -1047,6 +1047,35 @@
       const order = shuffle(syllables.map((s, i) => i));
       let built = []; // indices into `syllables`, in the order tapped
       let attempts = 0;
+      let errors = 0; // tile taps that put a syllable in a wrong position
+
+      // `data.syllables` is not necessarily in word order (the real sets list
+      // them pre-scrambled), so the right syllable for each position comes
+      // from `target`: every ordering of the syllables that spells it.
+      const expectedAt = (() => {
+        const orders = [];
+        (function walk(used, pos, seq) {
+          if (seq.length === syllables.length) {
+            if (pos === target.length) orders.push(seq);
+            return;
+          }
+          syllables.forEach((s, i) => {
+            if (!used.has(i) && target.startsWith(s, pos)) {
+              walk(new Set(used).add(i), pos + s.length, [...seq, s]);
+            }
+          });
+        })(new Set(), 0, []);
+        return orders.length
+          ? syllables.map((_, p) => new Set(orders.map((o) => o[p])))
+          : null; // syllables don't spell the target — author error
+      })();
+
+      function isWrongPosition(i) {
+        const pos = built.length;
+        if (expectedAt) return !expectedAt[pos].has(syllables[i]);
+        const sofar = built.map((b) => syllables[b]).join("");
+        return !target.startsWith(sofar + syllables[i]);
+      }
 
       function isUsed(i) {
         return built.includes(i);
@@ -1062,6 +1091,7 @@
           );
           if (!used) {
             tile.addEventListener("click", () => {
+              if (isWrongPosition(i)) errors += 1;
               built.push(i);
               attempts += 1;
               render();
@@ -1093,7 +1123,7 @@
         if (built.length === 0) return;
         submitAttempt(item, retryMsg, () => {
           const word = built.map((i) => syllables[i]).join("");
-          return { answer: { word, attempts }, correct: word === target };
+          return { answer: { word, attempts, errors }, correct: word === target };
         });
       });
     },
@@ -1109,34 +1139,28 @@
         .filter(Boolean);
       const wordCount = words.length;
 
-      container.innerHTML = `
-        <h2 class="passage-title">${escapeHtml(data.title || "")}</h2>
-        <button type="button" class="btn" data-action="start">Pradedu</button>
-      `;
-      const startBtn = container.querySelector('[data-action="start"]');
-      let readingStartMs = null;
-
-      startBtn.addEventListener(
-        "click",
-        () => {
-          readingStartMs = Date.now();
-          renderReading();
-        },
-        { once: true }
-      );
+      // No start button: the clock starts the moment the text is on screen.
+      // "Baigiau" stays disabled for the first MIN_READ_SECONDS (thin
+      // progress line underneath, no countdown numbers).
+      const MIN_READ_SECONDS = 20;
+      const readingStartMs = Date.now();
+      renderReading();
 
       function renderReading() {
         container.innerHTML = `
+          <h2 class="passage-title">${escapeHtml(data.title || "")}</h2>
           <div class="reading-head">
             <span class="reading-timer" role="timer" aria-label="Skaitymo laikas">0:00</span>
             <label class="plain-toggle"><input type="checkbox" /> Paprastas tekstas</label>
           </div>
           <div class="reading-text"></div>
-          <button type="button" class="btn" data-action="stop">Baigiau</button>
+          <button type="button" class="btn" data-action="stop" disabled>Baigiau</button>
+          <div class="think-lock" aria-hidden="true"><div class="think-lock-fill"></div></div>
         `;
         const timerSpan = container.querySelector(".reading-timer");
         const textEl = container.querySelector(".reading-text");
         const plainToggle = container.querySelector(".plain-toggle input");
+        const stopBtn = container.querySelector('[data-action="stop"]');
         textEl.appendChild(buildReadingText(data.syllables || data.text || ""));
         plainToggle.addEventListener("change", () => {
           textEl.classList.toggle("plain", plainToggle.checked);
@@ -1144,12 +1168,21 @@
         const handle = setInterval(() => {
           timerSpan.textContent = fmtTime((Date.now() - readingStartMs) / 1000);
         }, 1000);
-        container.querySelector('[data-action="stop"]').addEventListener(
+        startThinkLock(
+          container.querySelector(".think-lock-fill"),
+          () => {
+            stopBtn.disabled = false;
+          },
+          MIN_READ_SECONDS * 1000
+        );
+        stopBtn.addEventListener(
           "click",
           () => {
             clearInterval(handle);
             const seconds = Math.round((Date.now() - readingStartMs) / 1000);
-            renderReview(seconds, textEl.cloneNode(true));
+            // Can't happen through the UI while the button is locked; kept as
+            // the guard that keeps a too-short read out of the WPM stats.
+            renderReview(seconds, textEl.cloneNode(true), seconds < MIN_READ_SECONDS);
           },
           { once: true }
         );
@@ -1173,7 +1206,7 @@
         return wrap;
       }
 
-      function renderReview(seconds, textNode) {
+      function renderReview(seconds, textNode, rushed) {
         container.innerHTML = `
           <div class="reading-text review"></div>
           <label class="parent-toggle"><input type="checkbox" /> Tėvai: pažymėti klaidas</label>
@@ -1232,7 +1265,8 @@
                   self_rating: value,
                   error_words: Array.from(errorWords),
                 },
-                null
+                null,
+                rushed ? { rushed: true } : undefined
               );
               nextItem();
             },

@@ -285,6 +285,7 @@ as $$
     select scheduled_date, (a->'answer'->>'words_per_minute')::numeric as wpm
     from ans
     where itype = 'read_aloud' and a->'answer'->>'words_per_minute' is not null
+      and coalesce((a->>'rushed')::boolean, false) = false  -- reads under 20s (§13.4)
   ),
   wpm_by_day as (
     select scheduled_date, extract(isodow from scheduled_date)::int as dow,

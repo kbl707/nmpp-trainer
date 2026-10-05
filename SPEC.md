@@ -514,8 +514,17 @@ if TTS is available; tapping the slot removes the most recently added
 syllable and re-enables its tile. "Toliau" checks the assembled word against
 `answer.word` (enabled once at least one syllable is placed), using the same
 one-retry flow as every other auto-checked type (§7). Recorded answer:
-`{ word, attempts }` — `attempts` counts tile placements/removals, a rough
-measure of how much trial-and-error the blend took.
+`{ word, attempts, errors }` — `attempts` counts tile placements/removals, a
+rough measure of how much trial-and-error the blend took; `errors` counts
+only the tile taps that put a syllable in a **wrong position** (not total
+taps), so accuracy can be read off it. `data.syllables` is *not* assumed to
+be in word order (real sets list them pre-scrambled), so the right syllable
+for a position is derived from `target`: a tap is correct if some ordering of
+the syllables that spells `target` has that syllable there. Each tap is judged
+on its own — one misplaced tile doesn't turn every later tap into an error —
+and the count accumulates across the item's retry. (If the syllables can't
+spell `target` at all — an authoring slip — it falls back to "does the word
+so far still start like `target`".)
 
 **`read_aloud`** (non-scored — like `passage`/`open_schema`, `correct` is
 always `null`, excluded from `total_autochecked`):
@@ -529,15 +538,18 @@ always `null`, excluded from `total_autochecked`):
 ```
 
 Flow:
-1. Title + "Pradedu" button.
-2. Reading screen: `data.syllables` rendered as word tiles (hyphens
+1. Reading screen, straight away — there is no start button. Title, then
+   `data.syllables` rendered as word tiles (hyphens
    stripped for the visible text; each syllable within a word alternates
    between the app's two brand colors — `--ink` and `--accent`, already
    proven at AA contrast — reset per word so no word reads as one flat
    color). A header toggle ("Paprastas tekstas") switches to plain,
-   uncolored text. A visible stopwatch runs during this screen only (the
-   one exception to §13.2's "no timer" rule). "Baigiau" stops it.
-3. Review screen, shown together: the same word tiles (still visible), "Ar
+   uncolored text. The reading clock starts automatically the moment the
+   text is first rendered and is shown as a small running clock (the one
+   exception to §13.2's "no timer" rule). "Baigiau" stops it, but stays
+   **disabled for the first 20 s** (the thin progress line from §7.3 fills
+   underneath, no countdown numbers); tapping it earlier does nothing.
+2. Review screen, shown together: the same word tiles (still visible), "Ar
    buvo sunku?" with three large buttons (`Lengva` / `Vidutiniškai` /
    `Sunku`), and a "Tėvai: pažymėti klaidas" toggle — when on, each word
    tile becomes tappable (toggles a red underline / error state). Tapping a
@@ -545,13 +557,21 @@ Flow:
    step; mark errors first, rate last).
 
 Recorded answer: `{ seconds, word_count, words_per_minute, self_rating,
-error_words }` — `seconds` is reading-phase-only (Pradedu→Baigiau, distinct
+error_words }` — `seconds` is reading-phase-only (text shown→Baigiau, distinct
 from the generic per-item `seconds` §4 already records for every item type,
 which spans the whole item including the review screen); `word_count` from
 splitting `data.text` on whitespace; `words_per_minute` =
 `round(word_count / (seconds/60))`; `self_rating` one of `lengva` /
 `vidutiniskai` / `sunku`; `error_words` the tapped words (empty array if the
 parent toggle was never used).
+
+**Too-short reads.** If the final reading time is under 20 s, the answer
+*entry* (alongside `item_id`/`answer`/`seconds`, same place as §7.3's flag)
+gets `rushed: true`, and that read is left out of the weekly WPM average
+(§13.5). Because "Baigiau" is locked for exactly those 20 s this can't happen
+through the UI — it is the guard that keeps a stray value (a 540 wpm "read")
+out of the stats if the lock is ever bypassed. The parent-marked
+`error_words` of such a read still count.
 
 **`word_gap`** (auto-checked, same shape/check as `choice`):
 
@@ -580,7 +600,7 @@ empty for a learner with no matching item types):
 
 | key | meaning |
 |---|---|
-| `avg_wpm_by_day` | `[{date, dow, avg_wpm}]` — mean `read_aloud` words/minute per day |
+| `avg_wpm_by_day` | `[{date, dow, avg_wpm}]` — mean `read_aloud` words/minute per day, **excluding** entries flagged `rushed` (§13.4); a day with only rushed reads has no entry |
 | `syllable_build_accuracy_pct` | accuracy on `syllable_build` items in the window (from `by_type`) |
 | `comprehension_accuracy_pct` | accuracy on `choice` items in the window (from `by_type`) |
 | `top_error_words` | `[{word, count}]`, top 10, from `read_aloud.error_words[]` |
