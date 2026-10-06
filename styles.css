@@ -445,6 +445,91 @@ a.btn {
   margin-top: 6px;
 }
 
+/* Treasure chest (SPEC.md §7.4) */
+.chest-screen {
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.chest-art {
+  width: min(280px, 72vw);
+  margin: 4px auto 8px;
+}
+
+.chest-art svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.chest-lid {
+  transform-origin: 20px 72px;
+  transition: transform 0.45s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+
+.chest-glow {
+  opacity: 0;
+  transition: opacity 0.35s ease 0.15s;
+}
+
+.chest-art.open .chest-lid { transform: translateY(-4px) rotate(-30deg); }
+.chest-art.open .chest-glow { opacity: 1; }
+.chest-art.opening { animation: chest-shake 0.4s ease; }
+
+@keyframes chest-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px) rotate(-2deg); }
+  75% { transform: translateX(6px) rotate(2deg); }
+}
+
+.chest-picks {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+#screen .chest-picks .chest-pick {
+  width: 88px;
+  min-height: 72px;
+  margin-top: 0;
+  padding: 0;
+  font-size: 34px;
+}
+
+.chest-pick.chosen {
+  outline: 4px solid var(--success);
+  outline-offset: 3px;
+  opacity: 1;
+}
+
+.chest-reward {
+  font-size: 38px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--success);
+  margin: 12px 0 0;
+}
+
+.chest-error {
+  margin: 14px 0 0;
+  font-size: 18px;
+}
+
+.chest-screen .btn:not(.chest-pick) { margin-top: 16px; }
+
+.end-chest {
+  font-size: 20px;
+  font-weight: 700;
+  margin-top: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chest-lid, .chest-glow { transition: none; }
+  .chest-art.opening { animation: none; }
+}
+
 .new-badges {
   margin-top: 20px;
   border-top: 1px solid var(--grid-line);

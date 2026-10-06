@@ -118,6 +118,16 @@ client, and guards against being called twice via `results.stars_credited`.
 The header's `⭐ {n}` badge reads `progress` directly (anon `select` only).
 (`add_stars` is kept as a wrapper for older clients.)
 
+### Treasure chest (SPEC.md §7.4)
+
+After a completed, non-interrupted set (both learners) the child picks one of
+three buttons to open a chest: +1/+3/+5 ⭐ or „Dviguba diena“ (next scheduled
+day earns 2× stars). The three rewards are rolled by `record_progress` at
+completion — seeded by the result id and stored in `results.chest_reward` — so
+a refresh can't re-roll; `open_chest(set_id, pick)` records the pick and
+applies the reward, and `anon` has no INSERT grant on the reward columns.
+Henris's emoji (switcher label, end screen) is 👽; Lilija's is unchanged.
+
 ### Weekly stats (SPEC.md §7.2)
 
 `weekly_stats()` is a `security definer` RPC that anon can run but which only

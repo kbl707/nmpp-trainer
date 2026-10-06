@@ -9,6 +9,8 @@
   // to Henris so index.html needs no change.
   const LEARNER = window.NMPP_LEARNER || "henris";
   const TTS_ENABLED = LEARNER === "lilija";
+  // End-screen emoji: Henris is the alien, Lilija keeps the star.
+  const AVATAR = LEARNER === "lilija" ? "⭐" : "👽";
 
   const screenEl = document.getElementById("screen");
   const topbarEl = document.getElementById("topbar");
@@ -1393,6 +1395,151 @@
     });
   }
 
+  // ---- treasure chest (SPEC.md §7.4) ---------------------------------------
+
+  // The three rewards are rolled server-side when the set is completed
+  // (record_progress); this screen only picks which of them to open. Nothing
+  // here decides or writes a reward — open_chest() does, and is idempotent.
+  const CHEST_KEY = `nmpp:chest:${LEARNER}`;
+  const DOW_ACCUSATIVE = ["pirmadienį", "antradienį", "trečiadienį", "ketvirtadienį", "penktadienį", "šeštadienį", "sekmadienį"];
+
+  const CHEST_SVG = `
+    <svg viewBox="0 0 200 150" aria-hidden="true" focusable="false">
+      <ellipse cx="100" cy="144" rx="82" ry="6" fill="#21242b" opacity="0.12"/>
+      <rect x="20" y="70" width="160" height="72" rx="8" fill="#9b6a35" stroke="#21242b" stroke-width="4"/>
+      <rect x="22" y="94" width="156" height="9" fill="#6d4720"/>
+      <path d="M46 72 V140 M154 72 V140" stroke="#d9a21b" stroke-width="12"/>
+      <g class="chest-glow">
+        <path d="M52 70 L34 20 M100 70 L100 6 M148 70 L166 20" stroke="#ffd23f" stroke-width="7" stroke-linecap="round"/>
+        <ellipse cx="100" cy="71" rx="70" ry="9" fill="#ffe27a"/>
+      </g>
+      <rect x="87" y="66" width="26" height="28" rx="4" fill="#ffd23f" stroke="#21242b" stroke-width="3"/>
+      <circle cx="100" cy="77" r="3.5" fill="#21242b"/>
+      <g class="chest-lid">
+        <path d="M20 72 V54 Q20 22 100 22 Q180 22 180 54 V72 Z" fill="#b5803f" stroke="#21242b" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M46 29 V70 M154 29 V70" stroke="#d9a21b" stroke-width="12"/>
+        <path d="M20 72 H180" stroke="#21242b" stroke-width="4"/>
+      </g>
+    </svg>`;
+
+  function rememberChest(taskSetId) {
+    try {
+      localStorage.setItem(CHEST_KEY, taskSetId);
+    } catch (e) {}
+  }
+
+  function forgetChest() {
+    try {
+      localStorage.removeItem(CHEST_KEY);
+    } catch (e) {}
+  }
+
+  function pendingChestId() {
+    try {
+      return localStorage.getItem(CHEST_KEY);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // "Dviguba diena rytoj" — or the weekday, when the next scheduled day is not
+  // tomorrow (a Saturday chest points at Monday: there are no Sunday sets).
+  function doubleDayText(doubleOn) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(doubleOn || "");
+    if (m) {
+      const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+      const t = new Date();
+      t.setDate(t.getDate() + 1);
+      const sameDay = d.getFullYear() === t.getFullYear() && d.getMonth() === t.getMonth() && d.getDate() === t.getDate();
+      if (!sameDay) return `Dviguba diena ${DOW_ACCUSATIVE[(d.getDay() + 6) % 7]}`;
+    }
+    return "Dviguba diena rytoj";
+  }
+
+  function chestRewardText(chest) {
+    return chest.reward_type === "double" ? doubleDayText(chest.double_on) : `+${chest.reward_stars} ⭐`;
+  }
+
+  // Shows the chest and resolves with the open_chest() row once the child has
+  // opened it and pressed "Toliau" — or null if opening failed and they skipped.
+  function runChest(taskSetId) {
+    return new Promise((resolve) => {
+      topbarEl.hidden = true;
+      screenEl.innerHTML = `
+        <div class="chest-screen">
+          <p class="end-title chest-title" tabindex="-1">Rinkis skrynią!</p>
+          <div class="chest-art">${CHEST_SVG}</div>
+          <div class="chest-picks" role="group" aria-label="Skrynios pasirinkimas">
+            <button type="button" class="btn chest-pick" data-pick="1" aria-label="Pasirinkti skrynią 1">1</button>
+            <button type="button" class="btn chest-pick" data-pick="2" aria-label="Pasirinkti skrynią 2">2</button>
+            <button type="button" class="btn chest-pick" data-pick="3" aria-label="Pasirinkti skrynią 3">3</button>
+          </div>
+          <p class="chest-reward" role="status" hidden></p>
+          <p class="chest-error" role="alert" hidden>Nepavyko atidaryti. Bandyk dar kartą.</p>
+          <button type="button" class="btn chest-skip btn-secondary" hidden>Praleisti</button>
+          <button type="button" class="btn chest-next" data-primary hidden>Toliau</button>
+        </div>
+      `;
+      const root = screenEl.querySelector(".chest-screen");
+      const titleEl = root.querySelector(".chest-title");
+      const artEl = root.querySelector(".chest-art");
+      const picks = [...root.querySelectorAll(".chest-pick")];
+      const rewardEl = root.querySelector(".chest-reward");
+      const errorEl = root.querySelector(".chest-error");
+      const skipBtn = root.querySelector(".chest-skip");
+      const nextBtn = root.querySelector(".chest-next");
+      // Not a pick button: a held Enter from the last item must not open it.
+      titleEl.focus({ preventScroll: true });
+
+      let busy = false;
+      async function pick(btn) {
+        if (busy) return;
+        busy = true;
+        errorEl.hidden = true;
+        picks.forEach((b) => (b.disabled = true));
+        let chest;
+        try {
+          const { data, error } = await client.rpc("open_chest", {
+            p_set_id: taskSetId,
+            p_pick: Number(btn.dataset.pick),
+          });
+          if (error) throw error;
+          chest = Array.isArray(data) ? data[0] : data;
+          if (!chest) throw new Error("empty");
+        } catch (e) {
+          busy = false;
+          picks.forEach((b) => (b.disabled = false));
+          errorEl.hidden = false;
+          skipBtn.hidden = false;
+          return;
+        }
+        forgetChest();
+        btn.classList.add("chosen");
+        artEl.classList.add("opening");
+        // The lid lifts via CSS; reduced-motion users get the open state at once.
+        requestAnimationFrame(() => artEl.classList.add("open"));
+        titleEl.textContent = "Atidaryta!";
+        rewardEl.textContent = chestRewardText(chest);
+        rewardEl.hidden = false;
+        skipBtn.hidden = true;
+        playChime();
+        if (typeof chest.total_stars === "number") updateStarsBadge(chest.total_stars);
+        if (chest.reward_type === "double" || chest.reward_stars >= 3) renderConfetti(root);
+        const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        setTimeout(
+          () => {
+            nextBtn.hidden = false;
+            nextBtn.focus({ preventScroll: true });
+          },
+          reduced ? 0 : 700
+        );
+        nextBtn.addEventListener("click", () => resolve(chest), { once: true });
+      }
+      picks.forEach((b) => b.addEventListener("click", () => pick(b)));
+      skipBtn.addEventListener("click", () => resolve(null), { once: true });
+    });
+  }
+
   // ---- session lifecycle ------------------------------------------------
 
   function beginSession(taskSet) {
@@ -1455,7 +1602,7 @@
     // Both are bonuses: a failure in either must never block the finish
     // screen. They run in parallel; the results row is already saved.
     const onSaturday = isSaturday(session.taskSet.scheduled_date);
-    const [reward, weekly] = await Promise.all([
+    let [reward, weekly] = await Promise.all([
       (async () => {
         try {
           // The server recomputes everything from the saved results row.
@@ -1480,16 +1627,33 @@
       })(),
     ]);
 
+    // One chest per completed set, shown before the stats. The server rolled
+    // it already (chest_ready); a failed/skipped open just leaves it unopened.
+    let chest = null;
+    if (reward && reward.chest_ready) {
+      rememberChest(session.taskSet.id);
+      chest = await runChest(session.taskSet.id);
+      if (chest && onSaturday) {
+        // the week card was fetched before the chest stars existed
+        try {
+          const { data, error } = await client.rpc("weekly_stats", { p_learner: LEARNER });
+          if (!error && data) weekly = data;
+        } catch (e) {}
+      }
+    }
+
     // Prefer the server's figure; fall back to the local count offline.
     const shownStars = reward && typeof reward.set_stars === "number" ? reward.set_stars : setStars;
+    const totalStars = chest && typeof chest.total_stars === "number" ? chest.total_stars : reward && reward.total_stars;
 
     screenEl.innerHTML = `
       <div class="end-screen">
-        <div class="star">⭐</div>
+        <div class="star" aria-hidden="true">${AVATAR}</div>
         <p class="end-title">Šiandien — atlikta!</p>
         <p class="end-score">Teisingai: ${correct_count} iš ${total_autochecked}</p>
-        <p class="end-stars">⭐ +${shownStars}</p>
-        ${reward ? `<p class="end-total">Iš viso: ⭐ ${reward.total_stars}</p>` : ""}
+        <p class="end-stars">⭐ +${shownStars}${reward && reward.doubled ? " · Dviguba diena ×2" : ""}</p>
+        ${chest ? `<p class="end-chest">🎁 Skrynia: ${escapeHtml(chestRewardText(chest))}</p>` : ""}
+        ${reward ? `<p class="end-total">Iš viso: ⭐ ${totalStars}</p>` : ""}
         ${reward && reward.streak >= 1 ? `<p class="end-streak">🔥 ${reward.streak} dienos iš eilės</p>` : ""}
       </div>
     `;
@@ -1497,10 +1661,11 @@
 
     const endScreen = screenEl.querySelector(".end-screen");
     if (shownStars > 0) renderConfetti(endScreen);
-    playChime();
+    // The chest already chimed when it opened.
+    if (!chest) playChime();
 
     if (reward) {
-      updateStarsBadge(reward.total_stars);
+      updateStarsBadge(totalStars);
       const newBadges = reward.new_badges || [];
       if (newBadges.length > 0) {
         const badgesWrap = el(`<div class="new-badges"></div>`);
@@ -1520,6 +1685,25 @@
 
     // Plain outbound link to a YouTube Music search — nothing is embedded or bundled.
     endScreen.appendChild(
+      el(
+        `<a class="btn btn-secondary" href="https://music.youtube.com/search?q=Scoop%20Conor%20Price%20Nic%20D" target="_blank" rel="noopener">🎵 Švęsk su Scoop</a>`
+      )
+    );
+  }
+
+  // Finish screen after a resumed chest: the set's stats were already shown
+  // before the reload, so this is just the reward and the way out.
+  function renderChestFinish(chest) {
+    topbarEl.hidden = true;
+    screenEl.innerHTML = `
+      <div class="end-screen">
+        <div class="star" aria-hidden="true">${AVATAR}</div>
+        <p class="end-title">Šiandien — atlikta!</p>
+        ${chest ? `<p class="end-chest">🎁 Skrynia: ${escapeHtml(chestRewardText(chest))}</p>` : ""}
+        ${chest && typeof chest.total_stars === "number" ? `<p class="end-total">Iš viso: ⭐ ${chest.total_stars}</p>` : ""}
+      </div>
+    `;
+    screenEl.querySelector(".end-screen").appendChild(
       el(
         `<a class="btn btn-secondary" href="https://music.youtube.com/search?q=Scoop%20Conor%20Price%20Nic%20D" target="_blank" rel="noopener">🎵 Švęsk su Scoop</a>`
       )
@@ -1576,6 +1760,30 @@
     }
 
     await flushAbandonedSessions(new Set(taskSets.map((t) => t.id)));
+
+    // A chest that was rolled but not opened yet (reload on the chest screen):
+    // show the same chest again — its contents were fixed at completion.
+    const pendingId = pendingChestId();
+    if (pendingId) {
+      if (!taskSets.some((t) => t.id === pendingId)) {
+        forgetChest();
+      } else {
+        let ready = null;
+        try {
+          const { data, error } = await client.rpc("chest_ready", { p_set_id: pendingId });
+          if (error) throw error;
+          ready = data === true;
+        } catch (e) {
+          /* offline: keep the marker and carry on as normal */
+        }
+        if (ready === false) forgetChest();
+        if (ready) {
+          const chest = await runChest(pendingId);
+          renderChestFinish(chest);
+          return;
+        }
+      }
+    }
 
     if (taskSets.length === 0) {
       renderEmpty();

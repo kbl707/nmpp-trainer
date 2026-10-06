@@ -159,7 +159,11 @@ Single-family app, no auth, but the anon key is public in the page source:
 - `task_sets`: anon may `select` only rows with
   `scheduled_date <= current_date + 1` (no peeking far ahead, allows timezone slack).
   No insert/update/delete for anon.
-- `results`: anon may `insert` only. No select/update/delete for anon.
+- `results`: anon may `insert` only, and only the columns the page sends
+  (column-level grant: `task_set_id, answers, correct_count, total_autochecked,
+  duration_seconds, interrupted, learner, submitted_at`) — never
+  `chest_reward`, `stars_credited` or `stars_multiplier` (§7.4). No
+  select/update/delete for anon.
 - `progress`: anon may `select` only. Writes only happen through the
   `record_progress` RPC (see §7.1), never directly.
 - `weekly_stats()` (§7.2) is executable by anon but returns aggregates only.
@@ -356,6 +360,54 @@ signal for the weekly feedback loop, never shown to the child. (In
 practice this can only fire on `choice`/`match`, since the three locked
 types can't submit before 6s.) No schema change: these are just additional
 keys inside the existing `answers[]` jsonb.
+
+## 7.4 Treasure chest & avatar
+
+**Avatar.** Henris's emoji is 👽: it prefixes his name in the header
+switcher (on both pages) and replaces the ⭐ above „Šiandien — atlikta!“ on
+his end screen. Lilija keeps ⭐ there. The `⭐ n` stars badge is the currency
+and is unchanged for both.
+
+**Chest.** Both learners get one treasure chest after a completed set
+(shown after the final item, before the stats/end screen). It is not shown
+for interrupted sets (the abandoned-session flush never calls
+`record_progress`, and the RPC skips a chest for `interrupted = true`), nor
+for a set that already got one — `record_progress` rolls a chest only if no
+other `results` row for that `task_set_id` has `chest_reward`, so replaying a
+rewarded set gives nothing.
+
+- **UI.** „Rinkis skrynią!“, a large closed chest (inline SVG, no external
+  image) and three buttons „1“ „2“ „3“ (88×72px, keyboard reachable; focus
+  starts on the title so a held Enter can't open one). Tapping one calls
+  `open_chest`; the lid opens (CSS, disabled under `prefers-reduced-motion`),
+  the existing `playChime()` plays (still gated by the sound toggle), the title
+  becomes „Atidaryta!“ and the reward is shown, then „Toliau“ leads to the
+  normal end screen with a „🎁 Skrynia: …“ line and the updated total. If the
+  RPC fails the child can retry, or „Praleisti“ (the chest stays unopened
+  server-side).
+- **Rewards (weights).** `+1 ⭐` 50 %, `+3 ⭐` 30 %, `+5 ⭐` 12 %, „Dviguba diena“
+  8 % (the next scheduled day's sets earn 2× stars; text „Dviguba diena rytoj“,
+  or „Dviguba diena pirmadienį“ when the next day isn't tomorrow — no Sunday
+  sets). The ×2 applies to the stars of the answers in the sets scheduled that
+  day (shown as „⭐ +6 · Dviguba diena ×2“), not to chest stars.
+- **Rolled at completion, not at the tap.** `record_progress` pre-rolls three
+  rewards from `md5(result id || ':' || slot)` and stores
+  `results.chest_reward = {"rolls":[r1,r2,r3]}`. Button N always opens roll N,
+  so the choice is real but cannot change the outcome, and a refresh cannot
+  re-roll. The client only learns what is inside when it opens it.
+- **Writes only via RPC.** `open_chest(p_set_id, p_pick)` (security definer)
+  records `pick`/`reward`/`opened_at` in `chest_reward`, then credits
+  `progress.total_stars` or sets `progress.double_on` to the next non-Sunday
+  date. It is idempotent: a repeat call (double-tap, retry) returns the
+  stored reward and pays nothing more. `anon` has **no INSERT grant** on
+  `results.chest_reward`, `stars_credited` or `stars_multiplier`
+  (column-level grants, §6), so the client can't write a reward itself.
+- **Reload.** After the final item the page stores
+  `nmpp:chest:{learner}` = set id; if the page is reloaded before the chest is
+  opened, `chest_ready(set_id)` says it is still unopened and the same chest
+  is shown again (then a short finish screen). Opening clears the marker.
+- **Stats.** `weekly_stats().stars_earned` = answer stars × the day's
+  multiplier (`results.stars_multiplier`) + opened-chest stars.
 
 ## 8. Pages / routes
 
