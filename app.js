@@ -1722,8 +1722,10 @@
 
   // ---- boot ---------------------------------------------------------------
 
-  function renderEmpty() {
-    screenEl.innerHTML = `<p class="empty">Šiandien užduočių nėra. Laisva diena! 🎉</p>`;
+  function renderEmpty(catchUp) {
+    screenEl.innerHTML = catchUp
+      ? `<p class="empty">Šiai dienai užduočių nėra.</p>`
+      : `<p class="empty">Šiandien užduočių nėra. Laisva diena! 🎉</p>`;
   }
 
   function renderSubjectPicker(taskSets) {
@@ -1805,7 +1807,7 @@
     }
 
     if (taskSets.length === 0) {
-      renderEmpty();
+      renderEmpty(catchUp);
     } else if (taskSets.length === 1) {
       beginSession(taskSets[0]);
     } else {
