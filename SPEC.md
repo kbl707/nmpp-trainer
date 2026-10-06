@@ -426,6 +426,20 @@ rewarded set gives nothing.
   service key kept only in memory — SKIP if RLS makes this awkward; parent can
   use Claude chat instead.
 
+### 8.1 Weekly status on the timetables
+
+`/h` and `/l` show, for each weekday of the current week, whether that day's
+trainer set was done: a mark on the day tab (✓ / ✗ / ◐) and a chip next to the
+NMPP tag on the task card („✓ Atlikta“, „Praleista“, „Nebaigta“) — never colour
+alone. The pages have no results access, so they call the read-only
+`week_status(learner)` RPC, which returns only `{date,total,done}` per day
+(14 days back to tomorrow; `done` = sets with a non-interrupted result).
+Client rules: all sets done → done; a **past** day with none done → missed
+(some done → unfinished); today's and future days get no mark until done —
+today is never „missed“; a day with no set in the database gets no mark. A
+missed day's „Atidaryti užduotis →“ link already opens the catch-up (§8). If
+`config.js` or the request fails the pages simply show no status.
+
 ## 9. Repo layout & deliverables
 
 ```

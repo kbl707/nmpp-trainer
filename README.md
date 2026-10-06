@@ -29,6 +29,8 @@ this repo — committed as-is, apart from one change: each day's „Atidaryti
 užduotis →“ link appends `?date=<that day>` (a small `dayDate()` helper), which
 the trainer uses to open a missed day's set (SPEC.md §8). If the generator is
 re-run it needs the same tweak or the links fall back to today's set.
+The pages also load `../config.js` and call the read-only `week_status` RPC to
+mark each day done / missed / unfinished (SPEC.md §8.1) — the same applies.
 
 `/?date=YYYY-MM-DD` and `/lilija/?date=YYYY-MM-DD` open that day's set with a
 „Praleista diena“ banner; results are saved normally.

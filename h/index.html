@@ -42,6 +42,12 @@ main{padding:14px 16px}
 .item.gap{border-style:dashed;color:var(--muted);background:transparent}
 .legend{margin-top:18px;font-size:12.5px;color:var(--muted);border-top:1px solid var(--grid);padding-top:8px}
 .legend b{color:var(--ink)}
+.st{display:block;font-size:12px;font-weight:700;line-height:1;margin-top:2px}
+.st-done{color:#2e7d32}.st-missed,.st-part{color:#8a5a00}
+.tab.active .st-done{color:#9be29f}.tab.active .st-missed,.tab.active .st-part{color:#ffd77a}
+.chip{display:inline-block;margin-left:6px;font-size:12px;font-weight:700;padding:0 8px;border-radius:999px;border:1.5px solid;background:var(--paper);letter-spacing:0}
+.chip-done{color:#2e7d32;border-color:#2e7d32}
+.chip-missed,.chip-part{color:#7a4b00;border-color:#c98a00}
 </style>
 </head>
 <body>
@@ -53,6 +59,7 @@ main{padding:14px 16px}
 </header>
 <main id="main"></main>
 </div>
+<script src="../config.js"></script>
 <script>
 const DAYS=[{"short": "Pr", "long": "pirm."}, {"short": "An", "long": "antr."}, {"short": "Tr", "long": "treč."}, {"short": "Kt", "long": "ketv."}, {"short": "Pe", "long": "penkt."}, {"short": "Še", "long": "šešt."}, {"short": "Sk", "long": "sekm."}];
 const DATA=[[{"name": "Daugybos lentelė — 5 min", "nmpp": true, "link": false, "when": "Ryte", "note": "Kortelės arba Duolingo Math, prieš pamokas"}, {"from": "10.20", "to": "11.05", "name": "Matematika"}, {"from": "11.25", "to": "12.10", "name": "Lietuvių k. ir literatūra", "note": "4n"}, {"from": "12.30", "to": "13.15", "name": "Dailė"}, {"from": "13.25", "to": "14.10", "name": "Fizinis ugdymas"}, {"from": "14.20", "to": "15.05", "name": "Lietuvių k. ir literatūra", "note": "4n"}, {"name": "Matematika — 20 min", "nmpp": true, "link": true, "from": "15.10", "to": "15.30", "note": "Šios dienos užduotys ekrane"}], [{"name": "Daugybos lentelė — 5 min", "nmpp": true, "link": false, "when": "Ryte", "note": "Kortelės arba Duolingo Math, prieš pamokas"}, {"from": "08.30", "to": "09.15", "name": "Visuomeninis ugdymas", "note": "4n"}, {"from": "09.25", "to": "10.10", "name": "Matematika"}, {"from": "11.25", "to": "12.10", "name": "Lietuvių k. ir literatūra", "note": "4n"}, {"from": "12.30", "to": "13.15", "name": "Anglų k."}, {"from": "13.25", "to": "14.10", "name": "Lietuvių k. ir literatūra", "note": "4n"}, {"from": "14.20", "to": "15.05", "name": "Matematika"}, {"name": "Skaitymas — 20 min", "nmpp": true, "link": true, "from": "15.10", "to": "15.30", "note": "Pirma klausimai → tada tekstas → pieštuku žymėk vardus"}], [{"name": "Daugybos lentelė — 5 min", "nmpp": true, "link": false, "when": "Ryte", "note": "Kortelės arba Duolingo Math, prieš pamokas"}, {"from": "10.20", "to": "11.05", "name": "Lietuvių k. ir literatūra", "note": "4n"}, {"from": "12.30", "to": "13.15", "name": "Anglų k."}, {"from": "13.25", "to": "14.10", "name": "Muzika"}, {"from": "14.20", "to": "15.05", "name": "Matematika"}, {"name": "Matematika — 20 min", "nmpp": true, "link": true, "from": "15.10", "to": "15.30", "note": "Šios dienos užduotys ekrane"}], [{"name": "Daugybos lentelė — 5 min", "nmpp": true, "link": false, "when": "Ryte", "note": "Kortelės arba Duolingo Math, prieš pamokas"}, {"from": "09.25", "to": "10.10", "name": "Tikyba"}, {"from": "10.20", "to": "11.05", "name": "Muzika"}, {"from": "11.25", "to": "12.10", "name": "Matematika"}, {"from": "12.30", "to": "13.15", "name": "Gamtos mokslai", "note": "4n"}, {"from": "13.25", "to": "14.10", "name": "Lietuvių k. ir literatūra", "note": "4n"}, {"from": "14.20", "to": "15.05", "name": "Lietuvių k. ir literatūra", "note": "4n"}, {"name": "Akys, ranka, raidės — 15 min", "nmpp": true, "link": true, "from": "15.10", "to": "15.30", "note": "Atsispausdintas lapas, su tėvais, be ekrano"}], [{"name": "Daugybos lentelė — 5 min", "nmpp": true, "link": false, "when": "Ryte", "note": "Kortelės arba Duolingo Math, prieš pamokas"}, {"from": "10.20", "to": "11.05", "name": "Technologijos"}, {"from": "13.25", "to": "14.10", "name": "Fizinis ugdymas"}, {"from": "14.20", "to": "15.05", "name": "Fizinis ugdymas"}, {"name": "Schemos tekstiniams uždaviniams — 20 min", "nmpp": true, "link": true, "from": "15.10", "to": "15.30", "note": "Perskaityk → nupiešk → tik tada skaičiuok"}], [{"name": "Ilgoji sesija — 40–60 min", "nmpp": true, "link": true, "from": "10.00", "to": "11.00", "note": "Savarankiškai, su laikmačiu, be raginimo"}], []];
@@ -84,6 +91,29 @@ DAYS.forEach((d,i)=>{
 });
 function show(i){[...tabs.children].forEach((x,k)=>x.classList.toggle('active',k===i));[...mainEl.children].forEach((x,k)=>x.classList.toggle('active',k===i));}
 show(jsToday<DAYS.length?jsToday:0);
+
+// Per-day status from the trainer's database (aggregates only, via week_status).
+// Silent no-op if config.js / the network is unavailable.
+(function(){
+  const cfg=window.NMPP_CONFIG;if(!cfg)return;
+  const todayIso=dayDate(jsToday);
+  const LABEL={done:'✓ Atlikta',missed:'Praleista',part:'Nebaigta'},MARK={done:'✓',missed:'✗',part:'◐'};
+  fetch(cfg.SUPABASE_URL+'/rest/v1/rpc/week_status',{method:'POST',headers:{apikey:cfg.SUPABASE_ANON_KEY,Authorization:'Bearer '+cfg.SUPABASE_ANON_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_learner:'henris'})})
+    .then(r=>r.ok?r.json():[]).then(rows=>{
+      (rows||[]).forEach(r=>{
+        let i=-1;for(let k=0;k<DAYS.length;k++)if(dayDate(k)===r.date)i=k;
+        if(i<0)return;
+        // today's unfinished set isn't "missed" yet, so it gets no mark
+        const st=r.done>=r.total?'done':(r.date<todayIso?(r.done>0?'part':'missed'):null);
+        if(!st)return;
+        const mark=document.createElement('span');mark.className='st st-'+st;mark.textContent=MARK[st];mark.title=LABEL[st];tabs.children[i].appendChild(mark);
+        mainEl.children[i].querySelectorAll('.item.nmpp a[target=_blank]').forEach(a=>{
+          const tag=a.closest('.item').querySelector('.tag');if(!tag)return;
+          const chip=document.createElement('span');chip.className='chip chip-'+st;chip.textContent=LABEL[st];tag.insertAdjacentElement('afterend',chip);
+        });
+      });
+    }).catch(()=>{});
+})();
 </script>
 </body>
 </html>
