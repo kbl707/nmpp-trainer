@@ -438,14 +438,17 @@ per day (14 days back to tomorrow; `done` = sets with a non-interrupted result,
 completed result).
 Client rules: all sets done → done; a **past** day with none done → missed
 (some done → unfinished); today's and future days get no mark until done —
-today is never „missed“; a day with no set in the database gets no mark. A
-missed day's „Atidaryti užduotis →“ link already opens the catch-up (§8). If
+today is never „missed“. A past day whose timetable has a trainer task but
+**no set in the database** counts as missed too (it can't have been done); it
+has no button, since there is nothing to open. A missed card turns light red
+with a red NMPP tag; a missed day that does have a set keeps its „Atidaryti
+užduotis →“ link, which opens the catch-up (§8). If
 `config.js` or the request fails the pages simply show no status.
 
 A **done** card turns light green with a green NMPP tag, and the „Atidaryti
 užduotis →“ button is replaced by „Rezultatas: 15/16“ (omitted for sets with
-nothing auto-checked, e.g. a printable — the card is just green). Missed and
-unfinished cards keep the button.
+nothing auto-checked, e.g. a printable — the card is just green). Unfinished
+cards stay yellow with „Nebaigta“ and keep the button.
 
 ## 9. Repo layout & deliverables
 

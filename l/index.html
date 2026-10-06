@@ -43,14 +43,17 @@ main{padding:14px 16px}
 .legend{margin-top:18px;font-size:12.5px;color:var(--muted);border-top:1px solid var(--grid);padding-top:8px}
 .legend b{color:var(--ink)}
 .st{display:block;font-size:12px;font-weight:700;line-height:1;margin-top:2px}
-.st-done{color:#2e7d32}.st-missed,.st-part{color:#8a5a00}
-.tab.active .st-done{color:#9be29f}.tab.active .st-missed,.tab.active .st-part{color:#ffd77a}
+.st-done{color:#2e7d32}.st-missed{color:#a33a34}.st-part{color:#8a5a00}
+.tab.active .st-done{color:#9be29f}.tab.active .st-missed{color:#ffb4ae}.tab.active .st-part{color:#ffd77a}
 .chip{display:inline-block;margin-left:6px;font-size:12px;font-weight:700;padding:0 8px;border-radius:999px;border:1.5px solid;background:var(--paper);letter-spacing:0}
 .chip-done{color:#2e7d32;border-color:#2e7d32}
-.chip-missed,.chip-part{color:#7a4b00;border-color:#c98a00}
+.chip-missed{color:#a33a34;border-color:#a33a34}
+.chip-part{color:#7a4b00;border-color:#c98a00}
 .item.nmpp.done{background:#eaf6eb;border-color:#2e7d32}
+.item.nmpp.missed{background:#fdecea;border-color:#c0504a}
+.item.nmpp.missed .tag{background:#a33a34}
 .item.nmpp.done .tag{background:#2e7d32}
-.item.done .time small,.item.done .name small{color:#4b5563}
+.item.done .time small,.item.done .name small,.item.missed .time small,.item.missed .name small{color:#4b5563}
 .result{margin-top:8px;font-size:17px;font-weight:700;color:#2e7d32}
 </style>
 </head>
@@ -103,23 +106,30 @@ show(jsToday<DAYS.length?jsToday:0);
   const todayIso=dayDate(jsToday);
   const LABEL={done:'✓ Atlikta',missed:'Praleista',part:'Nebaigta'},MARK={done:'✓',missed:'✗',part:'◐'};
   fetch(cfg.SUPABASE_URL+'/rest/v1/rpc/week_status',{method:'POST',headers:{apikey:cfg.SUPABASE_ANON_KEY,Authorization:'Bearer '+cfg.SUPABASE_ANON_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_learner:'lilija'})})
-    .then(r=>r.ok?r.json():[]).then(rows=>{
-      (rows||[]).forEach(r=>{
-        let i=-1;for(let k=0;k<DAYS.length;k++)if(dayDate(k)===r.date)i=k;
-        if(i<0)return;
-        // today's unfinished set isn't "missed" yet, so it gets no mark
-        const st=r.done>=r.total?'done':(r.date<todayIso?(r.done>0?'part':'missed'):null);
+    .then(r=>{if(!r.ok)throw 0;return r.json();}).then(rows=>{
+      const byDate={};(rows||[]).forEach(r=>{byDate[r.date]=r;});
+      DAYS.forEach((d,i)=>{
+        const date=dayDate(i),r=byDate[date];
+        const links=mainEl.children[i].querySelectorAll('.item.nmpp a[target=_blank]');
+        if(!r&&!links.length)return;
+        // today's unfinished set isn't "missed" yet, so it gets no mark; a past
+        // timetable task with no set at all can't have been done, so it is missed
+        const st=r&&r.done>=r.total?'done':(date<todayIso?(r&&r.done>0?'part':'missed'):null);
         if(!st)return;
         const mark=document.createElement('span');mark.className='st st-'+st;mark.textContent=MARK[st];mark.title=LABEL[st];tabs.children[i].appendChild(mark);
-        mainEl.children[i].querySelectorAll('.item.nmpp a[target=_blank]').forEach(a=>{
+        links.forEach(a=>{
           const item=a.closest('.item'),tag=item.querySelector('.tag');if(!tag)return;
           const chip=document.createElement('span');chip.className='chip chip-'+st;chip.textContent=LABEL[st];tag.insertAdjacentElement('afterend',chip);
+          if(st==='done'||st==='missed')item.classList.add(st);
           if(st==='done'){
             // finished: green card, and the result instead of the "open" button
-            item.classList.add('done');
             const prev=a.previousSibling;if(prev&&prev.nodeName==='BR')prev.remove();
             if(r.scored>0){const res=document.createElement('div');res.className='result';res.textContent='Rezultatas: '+r.correct+'/'+r.scored;a.replaceWith(res);}
             else a.remove();
+          }else if(!r){
+            // nothing to open: there is no set for that day
+            const prev=a.previousSibling;if(prev&&prev.nodeName==='BR')prev.remove();
+            a.remove();
           }
         });
       });
