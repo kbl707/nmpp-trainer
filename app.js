@@ -44,6 +44,16 @@
     return `${y}-${m}-${day}`;
   }
 
+  // ?date=YYYY-MM-DD opens a past day's set instead of today's (catch-up).
+  // Anything that isn't a real calendar date is ignored.
+  function requestedDate() {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(new URLSearchParams(location.search).get("date") || "");
+    if (!m) return null;
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    const real = d.getFullYear() === Number(m[1]) && d.getMonth() === Number(m[2]) - 1 && d.getDate() === Number(m[3]);
+    return real ? `${m[1]}-${m[2]}-${m[3]}` : null;
+  }
+
   function fmtTime(totalSeconds) {
     const s = Math.max(0, Math.floor(totalSeconds));
     const m = Math.floor(s / 60);
@@ -1746,10 +1756,19 @@
     loadSoundPref();
     loadStarsBadge();
     const today = todayStr();
+    const wanted = requestedDate();
+    const day = wanted || today;
+    // Catch-up = a past date. Today's own in-progress session / pending chest
+    // belong to a different set, so the housekeeping below must leave them be.
+    const catchUp = day < today;
+    if (catchUp) {
+      const banner = el(`<p id="catchup-banner" role="note">Praleista diena: ${day}</p>`);
+      document.getElementById("app-header").after(banner);
+    }
     let taskSets = [];
     try {
       const [{ data, error }] = await Promise.all([
-        client.from("task_sets").select("*").eq("scheduled_date", today).eq("learner", LEARNER),
+        client.from("task_sets").select("*").eq("scheduled_date", day).eq("learner", LEARNER),
         initTTS().then((v) => (ttsVoice = v)),
       ]);
       if (error) throw error;
@@ -1759,14 +1778,14 @@
       return;
     }
 
-    await flushAbandonedSessions(new Set(taskSets.map((t) => t.id)));
+    if (!catchUp) await flushAbandonedSessions(new Set(taskSets.map((t) => t.id)));
 
     // A chest that was rolled but not opened yet (reload on the chest screen):
     // show the same chest again — its contents were fixed at completion.
     const pendingId = pendingChestId();
     if (pendingId) {
       if (!taskSets.some((t) => t.id === pendingId)) {
-        forgetChest();
+        if (!catchUp) forgetChest();
       } else {
         let ready = null;
         try {

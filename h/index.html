@@ -67,6 +67,8 @@ document.getElementById('tz').textContent=shift?('Rodoma tavo laiku ('+localTZ.s
 
 const tabs=document.getElementById('tabs'),mainEl=document.getElementById('main');
 const jsToday=(new Date().getDay()+6)%7; // 0=Pr
+// ISO date (viewer's local calendar) of weekday i of the current week; the trainer's ?date= opens that day's set
+function dayDate(i){const d=new Date();d.setDate(d.getDate()+(i-jsToday));return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 DAYS.forEach((d,i)=>{
   const tab=document.createElement('div');tab.className='tab'+(i===jsToday?' today':'');tab.innerHTML=d.short+'<small>'+d.long+'</small>';tab.onclick=()=>show(i);tabs.appendChild(tab);
   const sec=document.createElement('section');sec.className='day';
@@ -75,7 +77,7 @@ DAYS.forEach((d,i)=>{
   items.forEach(it=>{
     const el=document.createElement('div');el.className='item'+(it.nmpp?' nmpp':'')+(it.gap?' gap':'');
     const time=it.from?('<div class="time">'+t(it.from)+(it.to?'<small>– '+t(it.to)+'</small>':'')+'</div>'):'<div class="time">'+(it.when||'')+'</div>';
-    let name='<div class="name">'+(it.nmpp?'<span class="tag">NMPP</span><br>':'')+it.name+(it.note?'<small>'+it.note+'</small>':'')+(it.link?'<br><a href="'+LINK+'" target="_blank" rel="noopener">Atidaryti užduotis →</a>':'')+'</div>';
+    let name='<div class="name">'+(it.nmpp?'<span class="tag">NMPP</span><br>':'')+it.name+(it.note?'<small>'+it.note+'</small>':'')+(it.link?'<br><a href="'+LINK+'?date='+dayDate(i)+'" target="_blank" rel="noopener">Atidaryti užduotis →</a>':'')+'</div>';
     el.innerHTML=time+name;sec.appendChild(el);
   });
   mainEl.appendChild(sec);

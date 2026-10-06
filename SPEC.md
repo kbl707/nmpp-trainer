@@ -413,6 +413,15 @@ rewarded set gives nothing.
 
 - `/` (index.html): today's task sets (usually one). If both subjects exist for
   today, show subject picker first.
+  - `?date=YYYY-MM-DD` (also on `/lilija/`) opens that day's set(s) instead of
+    today's — a catch-up for a missed day. A date before today shows a small
+    „Praleista diena: {date}“ banner; today's date, a future date or anything
+    that isn't a real calendar date behaves like no parameter (RLS still hides
+    sets beyond tomorrow). Results are written normally (`task_set_id` links
+    them to that day's set, so stars, streak and the §7.4 chest all apply). A
+    catch-up load does not flush today's unfinished session as interrupted and
+    leaves a pending chest alone. The timetable pages (`/h`, `/l`) pass each
+    weekday's date to their „Atidaryti užduotis →“ link.
 - `/results.html` (optional, nice-to-have): parent view, reads via pasted
   service key kept only in memory — SKIP if RLS makes this awkward; parent can
   use Claude chat instead.

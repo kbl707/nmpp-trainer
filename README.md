@@ -25,7 +25,13 @@ This repo's GitHub Pages site serves more than the trainer app:
 - `/printables/` — static worksheets linked from `printable` task items
 
 `/h` and `/l` are self-contained HTML pages maintained by a generator outside
-this repo — committed as-is, not modified or linted here.
+this repo — committed as-is, apart from one change: each day's „Atidaryti
+užduotis →“ link appends `?date=<that day>` (a small `dayDate()` helper), which
+the trainer uses to open a missed day's set (SPEC.md §8). If the generator is
+re-run it needs the same tweak or the links fall back to today's set.
+
+`/?date=YYYY-MM-DD` and `/lilija/?date=YYYY-MM-DD` open that day's set with a
+„Praleista diena“ banner; results are saved normally.
 
 ## One-time setup (already done for this deployment)
 
