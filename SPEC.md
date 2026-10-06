@@ -432,13 +432,20 @@ rewarded set gives nothing.
 trainer set was done: a mark on the day tab (✓ / ✗ / ◐) and a chip next to the
 NMPP tag on the task card („✓ Atlikta“, „Praleista“, „Nebaigta“) — never colour
 alone. The pages have no results access, so they call the read-only
-`week_status(learner)` RPC, which returns only `{date,total,done}` per day
-(14 days back to tomorrow; `done` = sets with a non-interrupted result).
+`week_status(learner)` RPC, which returns only `{date,total,done,correct,scored}`
+per day (14 days back to tomorrow; `done` = sets with a non-interrupted result,
+`correct`/`scored` = `correct_count`/`total_autochecked` of each set's first
+completed result).
 Client rules: all sets done → done; a **past** day with none done → missed
 (some done → unfinished); today's and future days get no mark until done —
 today is never „missed“; a day with no set in the database gets no mark. A
 missed day's „Atidaryti užduotis →“ link already opens the catch-up (§8). If
 `config.js` or the request fails the pages simply show no status.
+
+A **done** card turns light green with a green NMPP tag, and the „Atidaryti
+užduotis →“ button is replaced by „Rezultatas: 15/16“ (omitted for sets with
+nothing auto-checked, e.g. a printable — the card is just green). Missed and
+unfinished cards keep the button.
 
 ## 9. Repo layout & deliverables
 

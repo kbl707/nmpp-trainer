@@ -493,10 +493,12 @@ $$;
 
 grant execute on function weekly_stats(text) to anon;
 
--- week_status(learner): per-day set counts for the timetable pages (/h, /l),
--- which have no results access. Aggregates only — {date,total,done} for the
--- learner's sets from 14 days back to tomorrow; `done` = sets with at least one
--- non-interrupted result. Whether a not-done past day is "missed" is decided
+-- week_status(learner): per-day set counts and scores for the timetable pages
+-- (/h, /l), which have no results access. Aggregates only — {date,total,done,
+-- correct,scored} for the learner's sets from 14 days back to tomorrow; `done` =
+-- sets with a non-interrupted result, `correct`/`scored` = correct_count /
+-- total_autochecked of each set's FIRST completed result (so a replay can't
+-- change the shown score). Whether a not-done past day is "missed" is decided
 -- by the page (SPEC.md §8.1).
 create or replace function week_status(p_learner text default 'henris')
 returns jsonb
@@ -507,14 +509,23 @@ set search_path = public
 as $$
   with today as (select (now() at time zone 'Europe/Vilnius')::date as d)
   select coalesce(jsonb_agg(jsonb_build_object(
-      'date', s.scheduled_date, 'total', s.total, 'done', s.done) order by s.scheduled_date), '[]'::jsonb)
+      'date', s.scheduled_date, 'total', s.total, 'done', s.done,
+      'correct', s.correct, 'scored', s.scored) order by s.scheduled_date), '[]'::jsonb)
   from (
     select t.scheduled_date,
       count(*)::int as total,
-      (count(*) filter (where exists (
-        select 1 from results r where r.task_set_id = t.id and r.interrupted = false)))::int as done
+      (count(r.id))::int as done,
+      coalesce(sum(r.correct_count), 0)::int as correct,
+      coalesce(sum(r.total_autochecked), 0)::int as scored
     from task_sets t
     cross join today
+    left join lateral (
+      select x.id, x.correct_count, x.total_autochecked
+      from results x
+      where x.task_set_id = t.id and x.interrupted = false
+      order by x.submitted_at
+      limit 1
+    ) r on true
     where t.learner = p_learner
       and t.scheduled_date between today.d - 14 and today.d + 1
     group by t.scheduled_date

@@ -48,6 +48,10 @@ main{padding:14px 16px}
 .chip{display:inline-block;margin-left:6px;font-size:12px;font-weight:700;padding:0 8px;border-radius:999px;border:1.5px solid;background:var(--paper);letter-spacing:0}
 .chip-done{color:#2e7d32;border-color:#2e7d32}
 .chip-missed,.chip-part{color:#7a4b00;border-color:#c98a00}
+.item.nmpp.done{background:#eaf6eb;border-color:#2e7d32}
+.item.nmpp.done .tag{background:#2e7d32}
+.item.done .time small,.item.done .name small{color:#4b5563}
+.result{margin-top:8px;font-size:17px;font-weight:700;color:#2e7d32}
 </style>
 </head>
 <body>
@@ -108,8 +112,15 @@ show(jsToday<DAYS.length?jsToday:0);
         if(!st)return;
         const mark=document.createElement('span');mark.className='st st-'+st;mark.textContent=MARK[st];mark.title=LABEL[st];tabs.children[i].appendChild(mark);
         mainEl.children[i].querySelectorAll('.item.nmpp a[target=_blank]').forEach(a=>{
-          const tag=a.closest('.item').querySelector('.tag');if(!tag)return;
+          const item=a.closest('.item'),tag=item.querySelector('.tag');if(!tag)return;
           const chip=document.createElement('span');chip.className='chip chip-'+st;chip.textContent=LABEL[st];tag.insertAdjacentElement('afterend',chip);
+          if(st==='done'){
+            // finished: green card, and the result instead of the "open" button
+            item.classList.add('done');
+            const prev=a.previousSibling;if(prev&&prev.nodeName==='BR')prev.remove();
+            if(r.scored>0){const res=document.createElement('div');res.className='result';res.textContent='Rezultatas: '+r.correct+'/'+r.scored;a.replaceWith(res);}
+            else a.remove();
+          }
         });
       });
     }).catch(()=>{});
