@@ -561,8 +561,8 @@ UI differences from `/` (`body.lilija` in styles.css):
 - All buttons/tiles ≥ 64px tall.
 - One item per screen (already true of `/`).
 - The elapsed-time clock in the topbar is hidden (`#timer` stays `hidden`
-  in the markup) — Lilija's page shows no timer except inside `read_aloud`'s
-  own reading-phase stopwatch.
+  in the markup) — Lilija's page shows no timer at all; `read_aloud` times
+  her reading silently, word by word (§13.4).
 - Praise flashes and end-screen stars/streak/badges/confetti: identical
   mechanism to Henris (§7.1), just scoped to her `progress` row.
 - A header switcher (same pattern as the `/h` ↔ `/l` timetable pages):
@@ -623,40 +623,52 @@ always `null`, excluded from `total_autochecked`):
 ```
 
 Flow:
-1. Reading screen, straight away — there is no start button. Title, then
-   `data.syllables` rendered as word tiles (hyphens
-   stripped for the visible text; each syllable within a word alternates
-   between the app's two brand colors — `--ink` and `--accent`, already
-   proven at AA contrast — reset per word so no word reads as one flat
-   color). A header toggle ("Paprastas tekstas") switches to plain,
-   uncolored text. The reading clock starts automatically the moment the
-   text is first rendered and is shown as a small running clock (the one
-   exception to §13.2's "no timer" rule). "Baigiau" stops it, but stays
-   **disabled for the first 20 s** (the thin progress line from §7.3 fills
-   underneath, no countdown numbers); tapping it earlier does nothing.
-2. Review screen, shown together: the same word tiles (still visible), "Ar
-   buvo sunku?" with three large buttons (`Lengva` / `Vidutiniškai` /
-   `Sunku`), and a "Tėvai: pažymėti klaidas" toggle — when on, each word
-   tile becomes tappable (toggles a red underline / error state). Tapping a
-   difficulty button records the answer and advances (no separate confirm
-   step; mark errors first, rate last).
+1. Tap-to-advance reading. Title, then `data.syllables` rendered as word tiles
+   (hyphens stripped for the visible text; syllables alternate between the
+   app's two brand colors, reset per word; the header toggle „Paprastas
+   tekstas“ switches to plain text). At 26px+ the **current word** is
+   highlighted (yellow tile with an ink outline, high contrast), starting with
+   word 1. The big button reads „Pradėti“ at first and „Toliau“ after.
+   - The first tap (on the text or the button) only starts the clock — the
+     child then reads word 1 aloud.
+   - Every later tap, anywhere on the text or on „Toliau“ (Enter works too),
+     marks the current word read and moves to the next. One tap = one word;
+     there is no way to skip ahead (taps within 250 ms of the previous one
+     are ignored, and a held key does not repeat). Tapping after the last
+     word ends the reading.
+   - **The clock runs from the first tap to the last word's tap.** There is
+     no visible stopwatch (§13.2's no-timer rule now has no exception — only
+     a „3 / 18“ position counter) and no minimum-time lock.
+2. Review screen, shown together: the same word tiles (still visible; words
+   flagged slow get a dotted underline), „Ar buvo sunku?“ with three large
+   buttons (`Lengva` / `Vidutiniškai` / `Sunku`), and a „Tėvai: pažymėti
+   klaidas“ toggle — when on, each word tile becomes tappable (toggles a red
+   underline). Tapping a difficulty button records the answer and advances
+   (mark errors first, rate last). The manual `error_words` step is
+   unchanged.
 
-Recorded answer: `{ seconds, word_count, words_per_minute, self_rating,
-error_words }` — `seconds` is reading-phase-only (text shown→Baigiau, distinct
-from the generic per-item `seconds` §4 already records for every item type,
-which spans the whole item including the review screen); `word_count` from
-splitting `data.text` on whitespace; `words_per_minute` =
-`round(word_count / (seconds/60))`; `self_rating` one of `lengva` /
-`vidutiniskai` / `sunku`; `error_words` the tapped words (empty array if the
-parent toggle was never used).
+Recorded: inside `answer` — `{ seconds, word_count, words_per_minute,
+self_rating, error_words }` — and, on the answer *entry* itself (alongside
+`item_id`/`answer`/`seconds`/`stars`, the same place as §7.3's extras):
 
-**Too-short reads.** If the final reading time is under 20 s, the answer
-*entry* (alongside `item_id`/`answer`/`seconds`, same place as §7.3's flag)
-gets `rushed: true`, and that read is left out of the weekly WPM average
-(§13.5). Because "Baigiau" is locked for exactly those 20 s this can't happen
-through the UI — it is the guard that keeps a stray value (a 540 wpm "read")
-out of the stats if the lock is ever bypassed. The parent-marked
-`error_words` of such a read still count.
+| key | meaning |
+|---|---|
+| `word_times` | `[ms, …]` — time spent on each word, in text order (`word_count` entries); consecutive taps' differences, first tap → word 1 done, … → last word done |
+| `slow_words` | unique words whose time was **more than 2× the median** of this read's `word_times` — computed automatically, shown to the parent as a dotted underline, separate from the parent's `error_words` |
+| `rushed` | `true` only if the read averaged under 300 ms per word (a tap-through without reading); excluded from the weekly WPM average (§13.5) |
+
+`seconds` (inside `answer`) is the reading time = `sum(word_times)` rounded to
+whole seconds — the first-tap→last-word span, distinct from the generic
+per-item `seconds` §4 records for every item type (which spans the whole item
+including the review screen). `word_count` is the number of word tiles;
+`words_per_minute` = `round(word_count / (sum(word_times) / 60000))`;
+`self_rating` one of `lengva` / `vidutiniskai` / `sunku`; `error_words` the
+parent-tapped words (empty array if the toggle was never used).
+
+**Tap-through guard.** `rushed` is not a lock — nothing waits or is disabled;
+it is only a data-quality flag so a child who taps straight through (a 200+
+wpm "read") doesn't pollute the weekly WPM. The parent-marked `error_words`
+and the `slow_words` of such a read are still stored.
 
 **`word_gap`** (auto-checked, same shape/check as `choice`):
 

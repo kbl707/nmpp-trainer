@@ -1140,64 +1140,93 @@
       });
     },
 
-    // SPEC.md §13.4 — Lilija: reading-aloud passage with a reading-only
-    // stopwatch, then a difficulty rating + optional parent error-marking
-    // screen. Non-scored (like `passage`/`open_schema`): correct is always
-    // null.
+    // SPEC.md §13.4 — Lilija: tap-to-advance reading aloud. The text is shown
+    // with the current word highlighted; each tap (on the text or "Toliau")
+    // moves exactly one word on, so there is no skipping ahead. The clock runs
+    // from the first tap to the last word, and every word's time is kept.
+    // Then the review screen: difficulty rating + optional parent error-marking.
+    // Non-scored (like `passage`/`open_schema`): correct is always null.
     read_aloud(container, item) {
       const data = item.data || {};
-      const words = String(data.text || "")
-        .split(/\s+/)
-        .filter(Boolean);
-      const wordCount = words.length;
+      const MIN_TAP_GAP_MS = 250; // swallows an accidental double-tap
+      const RUSHED_MS_PER_WORD = 300; // tapped through without reading (stats guard)
 
-      // No start button: the clock starts the moment the text is on screen.
-      // "Baigiau" stays disabled for the first MIN_READ_SECONDS (thin
-      // progress line underneath, no countdown numbers).
-      const MIN_READ_SECONDS = 20;
-      const readingStartMs = Date.now();
       renderReading();
 
       function renderReading() {
         container.innerHTML = `
           <h2 class="passage-title">${escapeHtml(data.title || "")}</h2>
           <div class="reading-head">
-            <span class="reading-timer" role="timer" aria-label="Skaitymo laikas">0:00</span>
+            <span class="reading-progress" aria-hidden="true"></span>
             <label class="plain-toggle"><input type="checkbox" /> Paprastas tekstas</label>
           </div>
-          <div class="reading-text"></div>
-          <button type="button" class="btn" data-action="stop" disabled>Baigiau</button>
-          <div class="think-lock" aria-hidden="true"><div class="think-lock-fill"></div></div>
+          <p class="reading-hint">Skaityk garsiai. Palieski „Pradėti“ ir skaityk pirmą žodį, o paskui palieski po kiekvieno žodžio.</p>
+          <div class="reading-text tap-area"></div>
+          <button type="button" class="btn" data-primary data-action="advance">Pradėti</button>
         `;
-        const timerSpan = container.querySelector(".reading-timer");
         const textEl = container.querySelector(".reading-text");
         const plainToggle = container.querySelector(".plain-toggle input");
-        const stopBtn = container.querySelector('[data-action="stop"]');
+        const progressEl = container.querySelector(".reading-progress");
+        const hintEl = container.querySelector(".reading-hint");
+        const advanceBtn = container.querySelector('[data-action="advance"]');
         textEl.appendChild(buildReadingText(data.syllables || data.text || ""));
+        const tiles = Array.from(textEl.querySelectorAll(".word-tile"));
+        const wordCount = tiles.length;
         plainToggle.addEventListener("change", () => {
           textEl.classList.toggle("plain", plainToggle.checked);
         });
-        const handle = setInterval(() => {
-          timerSpan.textContent = fmtTime((Date.now() - readingStartMs) / 1000);
-        }, 1000);
-        startThinkLock(
-          container.querySelector(".think-lock-fill"),
-          () => {
-            stopBtn.disabled = false;
-          },
-          MIN_READ_SECONDS * 1000
-        );
-        stopBtn.addEventListener(
-          "click",
-          () => {
-            clearInterval(handle);
-            const seconds = Math.round((Date.now() - readingStartMs) / 1000);
-            // Can't happen through the UI while the button is locked; kept as
-            // the guard that keeps a too-short read out of the WPM stats.
-            renderReview(seconds, textEl.cloneNode(true), seconds < MIN_READ_SECONDS);
-          },
-          { once: true }
-        );
+
+        if (wordCount === 0) {
+          renderReview([], textEl.cloneNode(true));
+          return;
+        }
+
+        let current = 0; // index of the highlighted word
+        let started = false; // first tap starts the clock
+        let wordStartMs = 0;
+        let lastTapMs = 0;
+        const wordTimes = []; // ms spent on each word, in order
+
+        function mark() {
+          tiles.forEach((tile, i) => {
+            tile.classList.toggle("current", i === current);
+            tile.classList.toggle("read", i < current);
+          });
+          progressEl.textContent = `${current + 1} / ${wordCount}`;
+          if (typeof tiles[current].scrollIntoView === "function") {
+            tiles[current].scrollIntoView({ block: "nearest" });
+          }
+        }
+
+        function advance() {
+          if (session.submitting) return;
+          const now = Date.now();
+          if (now - lastTapMs < MIN_TAP_GAP_MS) return;
+          lastTapMs = now;
+          if (!started) {
+            started = true;
+            wordStartMs = now;
+            advanceBtn.textContent = "Toliau";
+            hintEl.hidden = true;
+            return;
+          }
+          wordTimes.push(now - wordStartMs);
+          wordStartMs = now;
+          current += 1;
+          if (current >= wordCount) {
+            renderReview(wordTimes, textEl.cloneNode(true));
+            return;
+          }
+          mark();
+        }
+
+        mark();
+        textEl.addEventListener("click", advance);
+        advanceBtn.addEventListener("click", advance);
+        // A held Enter/Space must not repeat-fire the button and run ahead.
+        advanceBtn.addEventListener("keydown", (e) => {
+          if (e.repeat) e.preventDefault();
+        });
       }
 
       // Splits "Ma-ma vi-rė ko-šę." into word tiles; within each word,
@@ -1218,7 +1247,31 @@
         return wrap;
       }
 
-      function renderReview(seconds, textNode, rushed) {
+      function median(values) {
+        if (values.length === 0) return 0;
+        const sorted = values.slice().sort((a, b) => a - b);
+        const mid = Math.floor(sorted.length / 2);
+        return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+      }
+
+      function renderReview(wordTimes, textNode) {
+        const wordCount = wordTimes.length;
+        const totalMs = wordTimes.reduce((a, b) => a + b, 0);
+        const seconds = Math.round(totalMs / 1000);
+        const words_per_minute = totalMs > 0 ? Math.round(wordCount / (totalMs / 60000)) : 0;
+        // "slow" = more than twice this read's median word time
+        const slowCut = 2 * median(wordTimes);
+        const slowWords = [];
+        const slowIdx = new Set();
+        Array.from(textNode.querySelectorAll(".word-tile")).forEach((tile, i) => {
+          tile.classList.remove("current", "read");
+          if (wordTimes[i] > slowCut) {
+            slowIdx.add(i);
+            if (!slowWords.includes(tile.dataset.word)) slowWords.push(tile.dataset.word);
+          }
+        });
+        const rushed = wordCount > 0 && totalMs / wordCount < RUSHED_MS_PER_WORD;
+
         container.innerHTML = `
           <div class="reading-text review"></div>
           <label class="parent-toggle"><input type="checkbox" /> Tėvai: pažymėti klaidas</label>
@@ -1229,6 +1282,7 @@
         const parentToggle = container.querySelector(".parent-toggle input");
         const errorWords = new Set();
         const tiles = Array.from(container.querySelectorAll(".word-tile"));
+        tiles.forEach((tile, i) => tile.classList.toggle("slow", slowIdx.has(i)));
 
         function refreshTiles() {
           tiles.forEach((tile) => {
@@ -1267,7 +1321,6 @@
             "click",
             () => {
               if (session.submitting) return;
-              const words_per_minute = seconds > 0 ? Math.round(wordCount / (seconds / 60)) : 0;
               finalizeItem(
                 item,
                 {
@@ -1278,7 +1331,7 @@
                   error_words: Array.from(errorWords),
                 },
                 null,
-                rushed ? { rushed: true } : undefined
+                Object.assign({ word_times: wordTimes, slow_words: slowWords }, rushed ? { rushed: true } : {})
               );
               nextItem();
             },

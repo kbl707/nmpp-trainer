@@ -136,6 +136,15 @@ a refresh can't re-roll; `open_chest(set_id, pick)` records the pick and
 applies the reward, and `anon` has no INSERT grant on the reward columns.
 Henris's emoji (switcher label, end screen) is 👽; Lilija's is unchanged.
 
+### Tap-to-advance reading (SPEC.md §13.4)
+
+Lilija's `read_aloud` shows the text with the current word highlighted; each
+tap on the text (or „Toliau“) moves one word on and the clock runs from the
+first tap to the last word. Per-word times land in `answers[].word_times` (ms),
+words slower than 2× the median in `answers[].slow_words`; WPM is computed
+from the word times. No schema change — just keys inside the existing
+`answers[]` jsonb.
+
 ### Weekly stats (SPEC.md §7.2)
 
 `weekly_stats()` is a `security definer` RPC that anon can run but which only

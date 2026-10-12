@@ -872,10 +872,43 @@ a.btn {
   margin-bottom: 18px;
 }
 
-.reading-timer {
+.reading-progress {
   font-weight: 700;
-  font-size: 20px;
+  font-size: 18px;
   font-variant-numeric: tabular-nums;
+}
+
+.reading-hint {
+  margin: 0 0 14px;
+  font-size: 18px;
+  text-align: center;
+}
+
+/* tap-to-advance reading: the whole text is one big tap target */
+.reading-text.tap-area {
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  padding: 12px 8px;
+  border-radius: 12px;
+}
+
+.word-tile.current {
+  background: #ffe27a;
+  color: var(--ink);
+  border-radius: 8px;
+  box-shadow: 0 0 0 3px var(--ink);
+  padding: 0 6px;
+  margin: 0 2px;
+}
+
+/* inside the highlight the syllable colours stay readable on yellow */
+.word-tile.current .syl-b { color: #0d3f7a; }
+
+.word-tile.slow {
+  text-decoration: underline dotted;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 6px;
 }
 
 .plain-toggle,
