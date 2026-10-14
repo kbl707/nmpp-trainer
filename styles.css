@@ -996,3 +996,18 @@ body.lilija #sound-toggle,
 body.lilija .speak-btn {
   min-height: 64px;
 }
+
+/* Optional inline SVG on an item (SPEC.md §5.3) */
+.item-svg-wrap {
+  max-width: 320px;
+  margin: 0 auto 18px;
+}
+
+.item-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* the lock bar is hidden (not just empty) when an item has no lock */
+.think-lock[hidden] { display: none; }

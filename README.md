@@ -145,6 +145,13 @@ words slower than 2× the median in `answers[].slow_words`; WPM is computed
 from the word times. No schema change — just keys inside the existing
 `answers[]` jsonb.
 
+### Adaptive think-lock and inline SVG (SPEC.md §7.3, §5.3)
+
+On Henris's page the "Toliau" lock is 0 s until something in the set goes wrong
+on a first attempt, then 6 s for the rest of that set (reload-safe; Lilija's page
+keeps 6 s). Any item can carry `data.svg` + `data.svg_alt` (≤ 4 KB, sanitised by
+`svg.js`) to show a clock face, fraction circle, diagram, etc. above the prompt.
+
 ### Weekly stats (SPEC.md §7.2)
 
 `weekly_stats()` is a `security definer` RPC that anon can run but which only

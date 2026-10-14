@@ -524,6 +524,19 @@
 
   const MAX_ATTEMPTS = 4;
   const THINK_LOCK_MS = 6000;
+
+  // Adaptive think-lock (Henris only, SPEC.md §7.3): while nothing in the set
+  // has gone wrong on a first attempt the lock on a fresh item is 0 s; from the
+  // first wrong first attempt on, every remaining item gets the full 6 s.
+  // Derived from the saved answers, so a reload mid-set keeps the same state.
+  // (A retry after a wrong attempt always re-locks for the full 6 s.)
+  function setHasWrongFirst() {
+    return !!session && session.answers.some((a) => a.correct === false || (a.attempts || 1) > 1);
+  }
+
+  function freshItemLockMs() {
+    return LEARNER === "henris" && !setHasWrongFirst() ? 0 : THINK_LOCK_MS;
+  }
   const RUSHED_THRESHOLD_MS = 4000;
   // Same mechanic for both learners, different wording: on Henris's page
   // this flow only ever fires for math-context items; on Lilija's page the
@@ -565,6 +578,16 @@
   // decides whether the button can actually enable (e.g. is there still a
   // typed value / selection).
   function startThinkLock(fillEl, onUnlock, durationMs = THINK_LOCK_MS) {
+    const bar = fillEl.closest ? fillEl.closest(".think-lock") : null;
+    if (durationMs <= 0) {
+      // no lock for this item: no bar, the button is usable at once
+      if (bar) bar.hidden = true;
+      fillEl.style.transition = "none";
+      fillEl.style.width = "0%";
+      onUnlock();
+      return;
+    }
+    if (bar) bar.hidden = false;
     fillEl.style.transition = "none";
     fillEl.style.width = "0%";
     void fillEl.offsetWidth; // force reflow so the reset above isn't animated
@@ -640,6 +663,25 @@
       }
     }
     renderer(target, item);
+    attachItemSvg(target, item);
+  }
+
+  // Optional `data.svg` on ANY item (SPEC.md §5.3): sanitised by svg.js and put
+  // above the prompt. Needs `data.svg_alt`; without it (or if the markup is
+  // rejected) nothing is shown and the item still works.
+  function attachItemSvg(target, item) {
+    const d = item.data;
+    if (!d || typeof d.svg !== "string" || !window.NMPPSvg) return;
+    const svg = window.NMPPSvg.build(d.svg, d.svg_alt);
+    if (!svg) {
+      console.warn(`item ${item.id}: data.svg ignored (needs svg_alt, ≤ ${window.NMPPSvg.MAX_BYTES} bytes, valid <svg>)`);
+      return;
+    }
+    const wrap = el(`<div class="item-svg-wrap"></div>`);
+    wrap.appendChild(svg);
+    const prompt = target.querySelector(".prompt");
+    if (prompt && prompt.parentNode) prompt.parentNode.insertBefore(wrap, prompt);
+    else target.insertBefore(wrap, target.firstChild);
   }
 
   // Only looks at items already shown before this one — a passage is meant
@@ -772,13 +814,13 @@
       let locked = true;
       let revealed = false;
 
-      function reapplyLock() {
+      function reapplyLock(ms = THINK_LOCK_MS) {
         locked = true;
         nextBtn.disabled = true;
         startThinkLock(lockFill, () => {
           locked = false;
           nextBtn.disabled = selected === null;
-        });
+        }, ms);
       }
 
       ["<", ">", "="].forEach((sign) => {
@@ -800,7 +842,7 @@
         row.appendChild(btn);
       });
       wireHint(container, item);
-      reapplyLock();
+      reapplyLock(freshItemLockMs());
 
       nextBtn.addEventListener("click", () => {
         if (revealed) {
@@ -1400,20 +1442,20 @@
     let locked = true;
     let revealed = false;
 
-    function reapplyLock() {
+    function reapplyLock(ms = THINK_LOCK_MS) {
       locked = true;
       nextBtn.disabled = true;
       startThinkLock(lockFill, () => {
         locked = false;
         nextBtn.disabled = input.value.trim() === "";
-      });
+      }, ms);
     }
 
     input.addEventListener("input", () => {
       if (!locked) nextBtn.disabled = input.value.trim() === "";
       if (input.value.trim() !== "") retryMsg.hidden = true;
     });
-    reapplyLock();
+    reapplyLock(freshItemLockMs());
 
     // Never record an answer the child did not type: an empty field only
     // nudges, it doesn't consume an attempt (and does nothing while locked).

@@ -152,6 +152,40 @@ Non-scored: `answer` null, `correct` null, excluded from `total_autochecked`
 `data.url` points at a static file committed under `printables/` in this
 repo, served alongside the app by GitHub Pages.
 
+## 5.3 Inline SVG on any item
+
+Any item (any `type`) may carry a picture: a clock face, a fraction circle, a
+number line, a diagram.
+
+```jsonc
+{ "id": "…", "type": "choice", "prompt": "Kiek valandų rodo laikrodis?",
+  "data": {
+    "options": ["4:30", "5:30", "6:20"],
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 200 200\">…</svg>",
+    "svg_alt": "Laikrodžio ciferblatas su valandine ir minutine rodykle."
+  },
+  "answer": { "index": 0 } }
+```
+
+- `data.svg` — a string of SVG markup, **≤ 4 KB** (4096 bytes UTF-8). Give it a
+  `viewBox`; fixed `width`/`height` are dropped so it scales.
+- `data.svg_alt` — **required** whenever `svg` is present. Lithuanian, and it
+  must describe the picture without giving away the answer (it is the
+  `aria-label` a screen reader announces). Without it the SVG is not shown.
+- Rendered **above the prompt**, centred, at most **320 px** wide, as
+  `role="img"` with `aria-label = svg_alt`; it is not a keyboard stop. The
+  item works exactly as before if the SVG is rejected.
+
+**Sanitising** (`svg.js`; the markup is parsed as XML and rebuilt node by node,
+never assigned with `innerHTML`). Removed: `<script>`, `<foreignObject>`,
+`<iframe>/<object>/<embed>`, `<style>` (use presentation attributes such as
+`fill`/`stroke` instead), and SMIL (`<animate>`, `<set>`, …); every `on*`
+attribute; every `href` / `xlink:href` whose value is not a same-document
+`#fragment`; any attribute value with `javascript:` or a `url(…)` that does not
+point at `#id`. Rejected outright (nothing rendered): over 4 KB, not
+well-formed XML, root not `<svg>`, or no `svg_alt`. Use only the SVG subset:
+shapes, `<path>`, `<text>`, `<g>`, `<defs>`/`<use href="#…">`, gradients.
+
 ## 6. Security / RLS
 
 Single-family app, no auth, but the anon key is public in the page source:
@@ -343,6 +377,16 @@ just `SCORED_RETRY_MSG` keyed off `LEARNER`). Locked types re-apply the
 „Teisingas atsakymas: {the correct answer}“ plus `hint` (if the item has
 one) as a one-line explanation, and „Toliau“ unlocks immediately — one more
 press just advances, it doesn't check anything further.
+
+**Adaptive lock (Henris's page only).** The 6 s lock above is the *default*.
+While nothing in the current set has gone wrong on a first attempt, a fresh
+`quick_math` / `number_input` / `compare` item has **no lock** (0 s: no bar, the
+button works as soon as there is an answer). From the first wrong first attempt
+in the set, **every remaining item** gets the full 6 s with the same bar. A
+retry after a wrong attempt always re-locks for 6 s, exactly as before, and the
+4-attempt flow and the `rushed` flag are untouched. The state is derived from
+the answers already saved for the set (`correct === false` or `attempts > 1`),
+so reloading the page mid-set keeps it. Lilija's page is unchanged: always 6 s.
 
 **Scoring.** Correct on attempt 1 → 2 ⭐ (unchanged from §7.1). Correct on
 attempts 2–4 → 1 ⭐. Never correct within 4 attempts → 0 ⭐, not shown
