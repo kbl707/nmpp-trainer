@@ -18,3 +18,4 @@ Write the line, commit, push, then report done.
 - 2026-10-19 10:51 UTC · operator · Claude Desktop + git · Desktop project re-linked to the new repo (docs/ only); global git email set to the noreply address · —
 - 2026-10-19 10:54 UTC · operator · GitHub · deleted kbl707/nmpp-trainer-archive after a verified local backup (mirror clone + 8 PR threads, ~/Documents/python/nmpp-trainer-archive-backup) · —
 - 2026-10-19 10:58 UTC · advisor chat · school-sync · manual run (run-local.sh --dry-run-digest) after the id cut-over: [eduka:h] ok 19 rows (cached session reused, so the cookie-cache move worked), [eduka:l] ok 107 rows (fresh login), focus h/l written, digest dry run only (no mail); sync_runs last hour = h,l; 0 old ids in school_* or sync_runs · local-20261019105712
+- 2026-10-19 11:01 UTC · operator · Claude Desktop project nmpp-trainer · instructions now say: never change schema/functions/app code; app ideas go to the advisor as one markdown file · —
