@@ -1,0 +1,16 @@
+# Ops log
+
+Append-only. One line per state change outside git. Reads are not
+logged. Format: `YYYY-MM-DD HH:MM UTC · who · system · what · ids`.
+Write the line, commit, push, then report done.
+
+- 2026-10-18 20:40 UTC · advisor chat · repo · ledger initialised (docs/BRIEF.md, docs/ops-log.md, docs/decisions.md, docs/inbox/) · —
+- 2026-10-18 20:44 UTC · advisor chat · Google Calendar · created all-day events: <H suffix> NMPP reading 2027-03-01, maths 2027-03-03 (popups 1 week and 1 day before) · t2q0a4ii9c52lj0hprf7sqhudo, p5hggcs46q0t3i4bv3icg86r1c
+- 2026-10-18 21:17 UTC · advisor chat · GitHub · merged PR #1 (CI check gates deploy), #2 (supabase-js 2.118.0 + SRI), #3 (grants SQL files); master deploys green, live footer ae7091c · c5b8159, 0c5b2b3, ae7091c
+- 2026-10-18 21:17 UTC · advisor chat · Supabase loccjeqdokzazmjgsyxj · applied migration anon_grants_2026_10_18 (supabase/migrations/2026-10-18-anon-grants.sql): anon = select task_sets/progress + column insert results + execute 6 RPCs; authenticated/PUBLIC none; default privs revoked; index results_task_set_id_idx. Verified: REST anon reads 200, results/school_grades read and progress PATCH 401, anon results insert ok (rolled back), / /<old L path>/ /h/ /l/ render, no console errors · —
+- 2026-10-19 05:25 UTC · advisor chat · GitHub + Supabase loccjeqdokzazmjgsyxj · merged PR #4 (stars once per set, decision #6), deploy green, live footer b168b05; applied migration stars_once_per_set_2026_10_18 (record_progress: set-row lock, replay earns 0, interrupted-only earns 0, new column replay). Verified as anon in rolled-back txn: old multi-row set 0f7e7fb5 → set_stars 0, replay true; ACL anon only; progress unchanged 731/8, 234/10; / and /<old L path>/ render, no console errors · b168b05
+- 2026-10-19 05:54 UTC · advisor chat · GitHub + Supabase loccjeqdokzazmjgsyxj · merged PR #5 (FIX-streak-today), deploy green; applied migration streak_today_2026_10_19 (record_progress streak loop skips an unfinished today). Verified as anon in rolled-back txn: catch-up of 2026-10-18 with today unfinished → streak 9 (was 0 on the old function), ACL anon only; 0 TEST rows left, progress unchanged 731/8, 234/10 · be5db74
+- 2026-10-19 09:18 UTC · advisor chat · GitHub · merged PR #7 (ids h/l, site 👽 H / ⭐ L, L's trainer at /l/uzduotys/ with a /<old L path>/ redirect) and PR #6 (docs anonymised); deploys green, live footer 3a21c39 · 28d0b67, 3a21c39
+- 2026-10-19 09:18 UTC · advisor chat · Supabase loccjeqdokzazmjgsyxj · applied migration anon_ids_2026_10_20: learner ids → h/l in 8 tables, checks learner in ('h','l'), defaults 'h', weekly_stats/week_status default 'h' (anon-only). Counts identical to the pre-cut-over snapshot (task_sets 42/23, results 41/17, school_topics 19/103 …); week_status('<old H id>') now [] · —
+- 2026-10-19 09:18 UTC · advisor chat · school-sync (kbl707/school-sync, launchd lt.school-sync) · merged PR #1 (ids h/l, Keychain names unchanged), install-local.sh re-installed the app; run-local.sh --check: learners h,l, 8 Keychain items loaded. First real run: Tue 2026-10-20 07:00 · cb86670
+- 2026-10-19 10:25 UTC · operator · Claude Desktop project nmpp-trainer · weekly-review instructions now say learner ids are h / l, never names; L's iPad bookmark changed to /l/uzduotys/ · —

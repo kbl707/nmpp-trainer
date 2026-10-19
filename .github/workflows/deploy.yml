@@ -1,0 +1,77 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [master]
+  # PRs run the check job only; deploy is skipped for them (see `if:` below).
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Per-ref group: PR refs never share a group with master.
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Syntax check
+        run: |
+          for f in app.js games.js svg.js; do node --check "$f"; done
+          python3 -m py_compile scripts/stamp-version.py
+
+      - name: Unit tests
+        run: node --test tests/*.test.js
+
+  deploy:
+    needs: check
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate config.js from repository secrets
+        run: |
+          cat > config.js <<EOF
+          // Generated at deploy time from repo secrets — see config.example.js.
+          window.NMPP_CONFIG = {
+            SUPABASE_URL: "${{ secrets.SUPABASE_URL }}",
+            SUPABASE_ANON_KEY: "${{ secrets.SUPABASE_ANON_KEY }}",
+          };
+          EOF
+
+      # Cache busting: ?v=<commit> on every local script/stylesheet, the same
+      # version in the page footer and in app.js. Fails the deploy if any
+      # local asset could not be stamped.
+      - name: Stamp asset versions
+        run: python3 scripts/stamp-version.py "${{ github.sha }}"
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

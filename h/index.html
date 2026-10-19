@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>H · 4 kl. — savaitės tvarkaraštis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#21242b;--grid:#dfe6ef;--accent:#1d5fad;--accent-soft:#eaf1f9;--paper:#fff;--muted:#6b7280;--nmpp:#fff4d6;--nmpp-line:#c98a00}
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{font-family:"Atkinson Hyperlegible",Arial,sans-serif;color:var(--ink);background:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:24px 24px;background-color:var(--paper);line-height:1.45;font-size:16px}
+.wrap{max-width:600px;margin:0 auto;padding:0 0 60px}
+header{position:sticky;top:0;z-index:5;background:var(--paper);border-bottom:3px solid var(--ink);padding:12px 16px 0}
+.title{display:flex;justify-content:space-between;align-items:center;gap:8px}
+h1{font-size:20px;line-height:1.2}
+h1 span{color:var(--accent)}
+.switch{display:flex;border:1.5px solid var(--ink);border-radius:20px;overflow:hidden;font-size:14px;font-weight:700}
+.switch a{padding:5px 14px;color:var(--ink);text-decoration:none}
+.switch a.on{background:var(--ink);color:var(--paper)}
+.tz{font-size:12px;color:var(--muted);text-align:right;white-space:nowrap}
+.tabs{display:flex;gap:4px;margin-top:10px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:1 0 auto;min-width:48px;padding:8px 6px 10px;border:1.5px solid var(--ink);border-bottom:none;background:var(--accent-soft);font-weight:700;font-size:14px;text-align:center;cursor:pointer;user-select:none}
+.tab.active{background:var(--ink);color:var(--paper)}
+.tab.today:not(.active){box-shadow:inset 0 -4px 0 var(--accent)}
+.tab small{display:block;font-weight:400;font-size:11px;opacity:.8}
+main{padding:14px 16px}
+.day{display:none}.day.active{display:block}
+.empty{color:var(--muted);text-align:center;padding:30px 0;font-size:17px}
+.item{display:grid;grid-template-columns:78px 1fr;gap:10px;border:1.5px solid var(--ink);background:var(--paper);margin-bottom:8px;padding:10px 12px;align-items:start}
+.item .time{font-weight:700;font-size:15px;line-height:1.3;white-space:nowrap}
+.item .time small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.item .name{font-size:16px}
+.item .name small{display:block;color:var(--muted);font-size:13px}
+.item.nmpp{background:var(--nmpp);border-color:var(--nmpp-line)}
+.item.nmpp .tag{display:inline-block;font-size:11px;font-weight:700;color:var(--paper);background:var(--nmpp-line);padding:1px 6px;border-radius:3px;margin-bottom:3px;letter-spacing:.5px}
+.item.nmpp a{display:inline-block;margin-top:6px;font-weight:700;color:var(--accent);text-decoration:none;border:1.5px solid var(--accent);padding:5px 12px;border-radius:4px;background:var(--paper)}
+.item.gap{border-style:dashed;color:var(--muted);background:transparent}
+.legend{margin-top:18px;font-size:12.5px;color:var(--muted);border-top:1px solid var(--grid);padding-top:8px}
+.legend b{color:var(--ink)}
+.st{display:block;font-size:12px;font-weight:700;line-height:1;margin-top:2px}
+.st-done{color:#2e7d32}.st-missed{color:#a33a34}.st-part{color:#8a5a00}
+.tab.active .st-done{color:#9be29f}.tab.active .st-missed{color:#ffb4ae}.tab.active .st-part{color:#ffd77a}
+.chip{display:inline-block;margin-left:6px;font-size:12px;font-weight:700;padding:0 8px;border-radius:999px;border:1.5px solid;background:var(--paper);letter-spacing:0}
+.chip-done{color:#2e7d32;border-color:#2e7d32}
+.chip-missed{color:#a33a34;border-color:#a33a34}
+.chip-part{color:#7a4b00;border-color:#c98a00}
+.item.nmpp.done{background:#eaf6eb;border-color:#2e7d32}
+.item.nmpp.missed{background:#fdecea;border-color:#c0504a}
+.item.nmpp.missed .tag{background:#a33a34}
+.item.nmpp.done .tag{background:#2e7d32}
+.item.done .time small,.item.done .name small,.item.missed .time small,.item.missed .name small{color:#4b5563}
+.result{margin-top:8px;font-size:17px;font-weight:700;color:#2e7d32}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="title"><h1>H · <span>4 kl.</span></h1><div class="switch"><a href="../h/" class="on">👽 H</a><a href="../l/" class="">⭐ L</a></div></div>
+  <div class="tz" id="tz" style="margin-top:4px">Vilniaus laiku</div>
+  <div class="tabs" id="tabs"></div>
+</header>
+<main id="main"></main>
+</div>
+<script src="../config.js"></script>
+<script>
+const DAYS=[{"short": "Pr", "long": "pirm."}, {"short": "An", "long": "antr."}, {"short": "Tr", "long": "treč."}, {"short": "Kt", "long": "ketv."}, {"short": "Pe", "long": "penkt."}, {"short": "Še", "long": "šešt."}, {"short": "Sk", "long": "sekm."}];
+const DATA=[[{"name": "Daugybos lentelė — 5 min", "nmpp": true, "link": false, "when": "Ryte", "note": "Kortelės arba Duolingo Math, prieš pamokas"}, {"from": "10.20", "to": "11.05", "name": "Matematika"}, {"from": "11.25", "to": "12.10", "name": "Lietuvių k. ir literatūra", "note": "4n"}, {"from": "12.30", "to": "13.15", "name": "Dailė"}, {"from": "13.25", "to": "14.10", "name": "Fizinis ugdymas"}, {"from": "14.20", "to": "15.05", "name": "Lietuvių k. ir literatūra", "note": "4n"}, {"name": "Matematika — 20 min", "nmpp": true, "link": true, "from": "15.10", "to": "15.30", "note": "Šios dienos užduotys ekrane"}], [{"name": "Daugybos lentelė — 5 min", "nmpp": true, "link": false, "when": "Ryte", "note": "Kortelės arba Duolingo Math, prieš pamokas"}, {"from": "08.30", "to": "09.15", "name": "Visuomeninis ugdymas", "note": "4n"}, {"from": "09.25", "to": "10.10", "name": "Matematika"}, {"from": "11.25", "to": "12.10", "name": "Lietuvių k. ir literatūra", "note": "4n"}, {"from": "12.30", "to": "13.15", "name": "Anglų k."}, {"from": "13.25", "to": "14.10", "name": "Lietuvių k. ir literatūra", "note": "4n"}, {"from": "14.20", "to": "15.05", "name": "Matematika"}, {"name": "Skaitymas — 20 min", "nmpp": true, "link": true, "from": "15.10", "to": "15.30", "note": "Pirma klausimai → tada tekstas → pieštuku žymėk vardus"}], [{"name": "Daugybos lentelė — 5 min", "nmpp": true, "link": false, "when": "Ryte", "note": "Kortelės arba Duolingo Math, prieš pamokas"}, {"from": "10.20", "to": "11.05", "name": "Lietuvių k. ir literatūra", "note": "4n"}, {"from": "12.30", "to": "13.15", "name": "Anglų k."}, {"from": "13.25", "to": "14.10", "name": "Muzika"}, {"from": "14.20", "to": "15.05", "name": "Matematika"}, {"name": "Matematika — 20 min", "nmpp": true, "link": true, "from": "15.10", "to": "15.30", "note": "Šios dienos užduotys ekrane"}], [{"name": "Daugybos lentelė — 5 min", "nmpp": true, "link": false, "when": "Ryte", "note": "Kortelės arba Duolingo Math, prieš pamokas"}, {"from": "09.25", "to": "10.10", "name": "Tikyba"}, {"from": "10.20", "to": "11.05", "name": "Muzika"}, {"from": "11.25", "to": "12.10", "name": "Matematika"}, {"from": "12.30", "to": "13.15", "name": "Gamtos mokslai", "note": "4n"}, {"from": "13.25", "to": "14.10", "name": "Lietuvių k. ir literatūra", "note": "4n"}, {"from": "14.20", "to": "15.05", "name": "Lietuvių k. ir literatūra", "note": "4n"}, {"name": "Akys, ranka, raidės — 15 min", "nmpp": true, "link": true, "from": "15.10", "to": "15.30", "note": "Atsispausdintas lapas, su tėvais, be ekrano"}], [{"name": "Daugybos lentelė — 5 min", "nmpp": true, "link": false, "when": "Ryte", "note": "Kortelės arba Duolingo Math, prieš pamokas"}, {"from": "10.20", "to": "11.05", "name": "Technologijos"}, {"from": "13.25", "to": "14.10", "name": "Fizinis ugdymas"}, {"from": "14.20", "to": "15.05", "name": "Fizinis ugdymas"}, {"name": "Schemos tekstiniams uždaviniams — 20 min", "nmpp": true, "link": true, "from": "15.10", "to": "15.30", "note": "Perskaityk → nupiešk → tik tada skaičiuok"}], [{"name": "Ilgoji sesija — 40–60 min", "nmpp": true, "link": true, "from": "10.00", "to": "11.00", "note": "Savarankiškai, su laikmačiu, be raginimo"}], []];
+const LINK="https://kbl707.github.io/nmpp-trainer/";
+
+// laiko juosta: tvarkaraštis Vilniaus laiku; jei telefonas kitoje zonoje – perskaičiuojam
+function offsetMin(tz){const d=new Date();const f=new Intl.DateTimeFormat('en-US',{timeZone:tz,hour12:false,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});const p=Object.fromEntries(f.formatToParts(d).map(x=>[x.type,x.value]));const asUTC=Date.UTC(p.year,p.month-1,p.day,p.hour%24,p.minute);return (asUTC-d.getTime())/60000;}
+const localTZ=Intl.DateTimeFormat().resolvedOptions().timeZone||'Europe/Vilnius';
+let shift=0;try{shift=Math.round(offsetMin(localTZ)-offsetMin('Europe/Vilnius'));}catch(e){}
+function t(s){if(!s||!shift)return s;const [h,m]=s.split('.').map(Number);let tot=h*60+m+shift;tot=((tot%1440)+1440)%1440;return String(Math.floor(tot/60)).padStart(2,'0')+'.'+String(tot%60).padStart(2,'0');}
+document.getElementById('tz').textContent=shift?('Rodoma tavo laiku ('+localTZ.split('/').pop()+', '+(shift>0?'+':'')+(shift/60)+' val.)'):'Vilniaus laiku';
+
+const tabs=document.getElementById('tabs'),mainEl=document.getElementById('main');
+const jsToday=(new Date().getDay()+6)%7; // 0=Pr
+// ISO date (viewer's local calendar) of weekday i of the current week; the trainer's ?date= opens that day's set
+function dayDate(i){const d=new Date();d.setDate(d.getDate()+(i-jsToday));return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+DAYS.forEach((d,i)=>{
+  const tab=document.createElement('div');tab.className='tab'+(i===jsToday?' today':'');tab.innerHTML=d.short+'<small>'+d.long+'</small>';tab.onclick=()=>show(i);tabs.appendChild(tab);
+  const sec=document.createElement('section');sec.className='day';
+  const items=DATA[i]||[];
+  if(!items.length){sec.innerHTML='<div class="empty">Laisva diena 🎉</div>';}
+  items.forEach(it=>{
+    const el=document.createElement('div');el.className='item'+(it.nmpp?' nmpp':'')+(it.gap?' gap':'');
+    const time=it.from?('<div class="time">'+t(it.from)+(it.to?'<small>– '+t(it.to)+'</small>':'')+'</div>'):'<div class="time">'+(it.when||'')+'</div>';
+    let name='<div class="name">'+(it.nmpp?'<span class="tag">NMPP</span><br>':'')+it.name+(it.note?'<small>'+it.note+'</small>':'')+(it.link?'<br><a href="'+LINK+'?date='+dayDate(i)+'" target="_blank" rel="noopener">Atidaryti užduotis →</a>':'')+'</div>';
+    el.innerHTML=time+name;sec.appendChild(el);
+  });
+  mainEl.appendChild(sec);
+});
+function show(i){[...tabs.children].forEach((x,k)=>x.classList.toggle('active',k===i));[...mainEl.children].forEach((x,k)=>x.classList.toggle('active',k===i));}
+show(jsToday<DAYS.length?jsToday:0);
+
+// Per-day status from the trainer's database (aggregates only, via week_status).
+// Silent no-op if config.js / the network is unavailable.
+(function(){
+  const cfg=window.NMPP_CONFIG;if(!cfg)return;
+  const todayIso=dayDate(jsToday);
+  const LABEL={done:'✓ Atlikta',missed:'Praleista',part:'Nebaigta'},MARK={done:'✓',missed:'✗',part:'◐'};
+  fetch(cfg.SUPABASE_URL+'/rest/v1/rpc/week_status',{method:'POST',headers:{apikey:cfg.SUPABASE_ANON_KEY,Authorization:'Bearer '+cfg.SUPABASE_ANON_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_learner:'h'})})
+    .then(r=>{if(!r.ok)throw 0;return r.json();}).then(rows=>{
+      const byDate={};(rows||[]).forEach(r=>{byDate[r.date]=r;});
+      DAYS.forEach((d,i)=>{
+        const date=dayDate(i),r=byDate[date];
+        const links=mainEl.children[i].querySelectorAll('.item.nmpp a[target=_blank]');
+        if(!r&&!links.length)return;
+        // today's unfinished set isn't "missed" yet, so it gets no mark; a past
+        // timetable task with no set at all can't have been done, so it is missed
+        const st=r&&r.done>=r.total?'done':(date<todayIso?(r&&r.done>0?'part':'missed'):null);
+        if(!st)return;
+        const mark=document.createElement('span');mark.className='st st-'+st;mark.textContent=MARK[st];mark.title=LABEL[st];tabs.children[i].appendChild(mark);
+        links.forEach(a=>{
+          const item=a.closest('.item'),tag=item.querySelector('.tag');if(!tag)return;
+          const chip=document.createElement('span');chip.className='chip chip-'+st;chip.textContent=LABEL[st];tag.insertAdjacentElement('afterend',chip);
+          if(st==='done'||st==='missed')item.classList.add(st);
+          if(st==='done'){
+            // finished: green card, and the result instead of the "open" button
+            const prev=a.previousSibling;if(prev&&prev.nodeName==='BR')prev.remove();
+            if(r.scored>0){const res=document.createElement('div');res.className='result';res.textContent='Rezultatas: '+r.correct+'/'+r.scored;a.replaceWith(res);}
+            else a.remove();
+          }else if(!r){
+            // nothing to open: there is no set for that day
+            const prev=a.previousSibling;if(prev&&prev.nodeName==='BR')prev.remove();
+            a.remove();
+          }
+        });
+      });
+    }).catch(()=>{});
+})();
+</script>
+</body>
+</html>

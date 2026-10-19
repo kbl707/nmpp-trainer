@@ -1,0 +1,611 @@
+-- NMPP Daily Trainer — schema + RLS (see SPEC.md §4, §6, §13)
+
+create extension if not exists pgcrypto;
+
+create table if not exists task_sets (
+  id uuid primary key default gen_random_uuid(),
+  scheduled_date date not null,
+  subject text not null check (subject in ('matematika','lietuviu','pratimai')),
+  title text not null,
+  items jsonb not null,          -- array of task items, see SPEC.md §5
+  phase int not null default 1,  -- 1..3 (prep phases)
+  learner text not null default 'h' check (learner in ('h','l')),
+  created_at timestamptz default now(),
+  unique (scheduled_date, subject, learner)
+);
+
+create table if not exists results (
+  id uuid primary key default gen_random_uuid(),
+  task_set_id uuid references task_sets(id) not null,
+  answers jsonb not null,        -- [{item_id, answer, correct|null, seconds, stars,
+                                  --   attempts?, first_answer?, rushed?}] — see SPEC.md §7.3
+  correct_count int not null,
+  total_autochecked int not null,
+  duration_seconds int not null, -- whole session
+  interrupted boolean default false, -- child abandoned mid-way
+  stars_credited boolean not null default false, -- guards record_progress() against double-crediting
+  learner text not null default 'h' check (learner in ('h','l')),
+  submitted_at timestamptz default now(),
+  -- Treasure chest (SPEC.md §7.4). Pre-rolled by record_progress() at
+  -- completion: {"rolls":[r1,r2,r3]}; open_chest() later adds
+  -- {"pick","reward","opened_at"}. NULL = no chest (interrupted set, or the
+  -- set was already rewarded). Written only by the two RPCs — anon has no
+  -- INSERT grant on this column (see the grants below).
+  chest_reward jsonb,
+  stars_multiplier int not null default 1 -- 2 when the set was completed on a "Dviguba diena"
+);
+
+-- progress: one row per learner, lifetime rewards state (see SPEC.md §7.1, §13).
+create table if not exists progress (
+  learner text primary key check (learner in ('h','l')),
+  total_stars int not null default 0,
+  streak int not null default 0,
+  badges jsonb not null default '[]'::jsonb,
+  updated_at timestamptz not null default now(),
+  double_on date -- "Dviguba diena": sets scheduled on this date earn 2x stars (SPEC.md §7.4)
+);
+
+insert into progress (learner) values ('h'), ('l') on conflict (learner) do nothing;
+
+-- For databases created before the treasure chest (§7.4); no-ops on a fresh one.
+alter table results add column if not exists chest_reward jsonb;
+alter table results add column if not exists stars_multiplier int not null default 1;
+alter table progress add column if not exists double_on date;
+
+alter table task_sets enable row level security;
+alter table results enable row level security;
+alter table progress enable row level security;
+
+-- task_sets: anon may only read rows up to "tomorrow" (timezone slack),
+-- never see far-future task sets, and can never write. Same policy serves
+-- both learners — the page filters by `learner` itself (SPEC.md §13).
+create policy "anon can read near-term task_sets"
+  on task_sets for select
+  to anon
+  using (scheduled_date <= (current_date + 1));
+
+-- results: anon may only insert; no read/update/delete.
+create policy "anon can insert results"
+  on results for insert
+  to anon
+  with check (true);
+
+-- ...and only the columns the client actually sends. Without this the policy
+-- above would let anon insert its own `chest_reward` / `stars_credited` /
+-- `stars_multiplier` (§7.4): those are written solely by the security-definer
+-- RPCs. Postgres tests column privileges before RLS, so a forbidden column
+-- is rejected with "permission denied".
+revoke insert on results from anon;
+grant insert (task_set_id, answers, correct_count, total_autochecked,
+              duration_seconds, interrupted, learner, submitted_at)
+  on results to anon;
+
+-- progress: anon may only read (for the header star badge, either learner).
+-- The only way to change it is the record_progress() RPC below, which is
+-- security definer and so bypasses RLS on progress/results internally.
+create policy "anon can read progress"
+  on progress for select
+  to anon
+  using (true);
+
+-- record_progress: called once per completed set (from submitSession in
+-- app.js). Recomputes everything from the saved results row: stars (clamped —
+-- a correct answer is worth 1 or 2, anything else 0, whatever the client
+-- wrote), the day-streak, and any newly earned badges — all scoped to the
+-- learner that set belongs to (derived from task_sets, never trusted from
+-- the client), so H's and L's progress rows are independent.
+-- Guards against double-crediting via results.stars_credited. See SPEC.md §7.1, §13.
+-- A set earns stars once (decision #6): the first non-interrupted row that
+-- credits wins; a later row of the same set is a replay — marked credited,
+-- 0 stars, no multiplier, no chest, streak/badges recomputed as usual.
+-- Return type grew (chest_ready, doubled, replay), so the old one must be dropped first.
+drop function if exists record_progress(uuid);
+create function record_progress(p_set_id uuid)
+returns table(total_stars int, streak int, badges jsonb, new_badges jsonb, set_stars int,
+              chest_ready boolean, doubled boolean, replay boolean)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_result results%rowtype;
+  v_learner text;
+  v_set_date date;
+  v_today date := (now() at time zone 'Europe/Vilnius')::date;
+  v_computed_stars int;
+  v_mult int := 1;
+  v_replay boolean;
+  v_chest jsonb;
+  v_streak int := 0;
+  v_day record;
+  v_existing_badges jsonb;
+  v_new_badges jsonb := '[]'::jsonb;
+  v_completed_count int;
+  v_quickmath_fast_count int;
+  v_has_perfect boolean;
+begin
+  -- Serialise all calls for one set: a concurrent call waits here and then sees
+  -- the first call's committed stars_credited, so a set can't be credited twice.
+  perform 1 from task_sets where id = p_set_id for update;
+
+  select * into v_result
+  from results
+  where task_set_id = p_set_id
+  order by interrupted, submitted_at desc
+  limit 1;
+
+  if v_result.id is null then
+    raise exception 'no results row found for set_id %', p_set_id;
+  end if;
+
+  select t.learner, t.scheduled_date into v_learner, v_set_date
+  from task_sets t where t.id = v_result.task_set_id;
+
+  -- Only a completed (non-interrupted) result can earn (decision #6). The pick
+  -- above prefers non-interrupted rows, so an interrupted one here means the set
+  -- has none: credit nothing, leave the row untouched, return current progress.
+  if v_result.interrupted then
+    select p.total_stars, p.streak, p.badges into total_stars, streak, badges
+    from progress p where p.learner = v_learner;
+    new_badges := '[]'::jsonb;
+    set_stars := 0;
+    chest_ready := false;
+    doubled := false;
+    replay := false;
+    return next;
+    return;
+  end if;
+
+  v_replay := exists (select 1 from results r
+                      where r.task_set_id = v_result.task_set_id and r.id <> v_result.id
+                        and r.stars_credited and not r.interrupted);
+
+  -- Stars are recomputed from the stored answers and clamped: a correct
+  -- answer is worth 1 or 2, anything else 0, whatever the client wrote.
+  select coalesce(sum(
+    case when (a->>'correct')::boolean is true
+         then least(greatest(coalesce((a->>'stars')::int, 0), 0), 2)
+         else 0 end
+  ), 0) into v_computed_stars
+  from jsonb_array_elements(v_result.answers) a;
+
+  if v_result.stars_credited then
+    -- already credited (e.g. duplicate call after a reload) — no-op
+    select p.total_stars, p.streak, p.badges into total_stars, streak, badges
+    from progress p where p.learner = v_learner;
+    new_badges := '[]'::jsonb;
+    set_stars := case when v_replay then 0 else v_computed_stars * v_result.stars_multiplier end;
+    -- a chest that was rolled but not opened yet can still be resumed
+    chest_ready := v_result.chest_reward is not null and not (v_result.chest_reward ? 'pick');
+    doubled := v_result.stars_multiplier > 1 and not v_replay;
+    replay := v_replay;
+    return next;
+    return;
+  end if;
+
+  -- "Dviguba diena" (§7.4): a chest on an earlier day flagged this set's date.
+  if not v_replay
+     and exists (select 1 from progress p where p.learner = v_learner and p.double_on = v_set_date) then
+    v_mult := 2;
+  end if;
+
+  -- One chest per completed set: none for an interrupted flush, and none if
+  -- another result for the same set already got one (a replayed set). The
+  -- three rewards are rolled now, from the result id, and stored — so
+  -- neither a refresh nor a different button can change what is inside.
+  if not v_result.interrupted
+     and not exists (select 1 from results r3
+                     where r3.task_set_id = v_result.task_set_id and r3.chest_reward is not null) then
+    v_chest := jsonb_build_object('rolls', jsonb_build_array(
+      chest_roll(v_result.id, 1), chest_roll(v_result.id, 2), chest_roll(v_result.id, 3)));
+  end if;
+
+  update results
+    set stars_credited = true, stars_multiplier = v_mult, chest_reward = v_chest
+    where id = v_result.id;
+
+  -- streak: walk this learner's scheduled days (that actually have a
+  -- task_set) backward from today, counting while each day has at least one
+  -- completed set; days with no task_set at all are simply absent from this
+  -- list. Today counts only once done (an unfinished today is skipped).
+  for v_day in (
+    select d.scheduled_date,
+      exists(
+        select 1 from results r2
+        join task_sets t2 on t2.id = r2.task_set_id
+        where t2.scheduled_date = d.scheduled_date and t2.learner = v_learner and r2.interrupted = false
+      ) as completed
+    from (select distinct scheduled_date from task_sets where scheduled_date <= v_today and learner = v_learner) d
+    order by d.scheduled_date desc
+  ) loop
+    if v_day.completed then
+      v_streak := v_streak + 1;
+    elsif v_day.scheduled_date = v_today then
+      continue; -- today isn't done yet: it can't break the streak, count from yesterday
+    else
+      exit;
+    end if;
+  end loop;
+
+  select p.badges into v_existing_badges from progress p where p.learner = v_learner;
+
+  select count(*) into v_completed_count
+  from results r join task_sets t on t.id = r.task_set_id
+  where r.interrupted = false and t.learner = v_learner;
+
+  select count(*) into v_quickmath_fast_count
+  from results r
+  join task_sets t on t.id = r.task_set_id
+  cross join lateral jsonb_array_elements(r.answers) ans
+  join lateral jsonb_array_elements(t.items) itm on itm->>'id' = ans->>'item_id'
+  where t.learner = v_learner
+    and itm->>'type' = 'quick_math'
+    and (ans->>'correct')::boolean is true
+    and (ans->>'seconds')::numeric < 5;
+
+  select exists(
+    select 1 from results r join task_sets t on t.id = r.task_set_id
+    where r.interrupted = false and t.learner = v_learner
+      and r.total_autochecked > 0 and r.correct_count = r.total_autochecked
+  ) into v_has_perfect;
+
+  if v_completed_count >= 5 and not (v_existing_badges @> '["pirma_savaite"]') then
+    v_new_badges := v_new_badges || '["pirma_savaite"]'::jsonb;
+  end if;
+  if v_quickmath_fast_count >= 20 and not (v_existing_badges @> '["daugybos_meistras"]') then
+    v_new_badges := v_new_badges || '["daugybos_meistras"]'::jsonb;
+  end if;
+  if v_has_perfect and not (v_existing_badges @> '["be_klaidu"]') then
+    v_new_badges := v_new_badges || '["be_klaidu"]'::jsonb;
+  end if;
+  if v_streak >= 5 and not (v_existing_badges @> '["savaites_ugnis"]') then
+    v_new_badges := v_new_badges || '["savaites_ugnis"]'::jsonb;
+  end if;
+
+  update progress
+    set total_stars = progress.total_stars + case when v_replay then 0 else v_computed_stars * v_mult end,
+        streak = v_streak,
+        badges = (
+          select coalesce(jsonb_agg(distinct b), '[]'::jsonb)
+          from jsonb_array_elements_text(progress.badges || v_new_badges) b
+        ),
+        updated_at = now()
+    where learner = v_learner
+    returning progress.total_stars, progress.streak, progress.badges
+    into total_stars, streak, badges;
+
+  new_badges := v_new_badges;
+  set_stars := case when v_replay then 0 else v_computed_stars * v_mult end;
+  chest_ready := v_chest is not null;
+  doubled := v_mult > 1;
+  replay := v_replay;
+  return next;
+end;
+$$;
+
+grant execute on function record_progress(uuid) to anon;
+
+-- Treasure chest (SPEC.md §7.4) -------------------------------------------
+
+-- Reward table, rolled per slot: +1 (50%), +3 (30%), +5 (12%), Dviguba diena (8%).
+-- Pure function of (result id, slot); internal — not callable by anon.
+create or replace function chest_roll(p_result_id uuid, p_slot int)
+returns jsonb
+language sql
+immutable
+set search_path = public
+as $$
+  select case
+    when n < 50 then '{"type":"stars","stars":1}'::jsonb
+    when n < 80 then '{"type":"stars","stars":3}'::jsonb
+    when n < 92 then '{"type":"stars","stars":5}'::jsonb
+    else '{"type":"double"}'::jsonb
+  end
+  from (select (('x' || substr(md5(p_result_id::text || ':' || p_slot), 1, 8))::bit(32)::bigint % 100)::int as n) s;
+$$;
+
+revoke execute on function chest_roll(uuid, int) from public, anon;
+
+-- chest_ready: is there a rolled-but-unopened chest for this set? Lets the page
+-- resume the chest screen after a reload. Returns only a boolean.
+create or replace function chest_ready(p_set_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from results r
+    where r.task_set_id = p_set_id and r.chest_reward is not null and not (r.chest_reward ? 'pick')
+  );
+$$;
+
+grant execute on function chest_ready(uuid) to anon;
+
+-- open_chest: the child picked button p_pick (1..3). Slot N always maps to
+-- roll N of the chest rolled at completion; the pick is recorded once, the
+-- reward applied once (stars -> progress.total_stars, or the double-day flag
+-- -> the next scheduled day, skipping Sunday). A repeat call just returns the
+-- stored reward, so a double-tap or retry cannot pay out twice.
+create or replace function open_chest(p_set_id uuid, p_pick int)
+returns table(reward_type text, reward_stars int, total_stars int, double_on date)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_result results%rowtype;
+  v_learner text;
+  v_reward jsonb;
+  v_next date := ((now() at time zone 'Europe/Vilnius')::date) + 1;
+begin
+  select * into v_result
+  from results
+  where task_set_id = p_set_id and chest_reward is not null
+  order by submitted_at desc
+  limit 1
+  for update;
+
+  if v_result.id is null then
+    raise exception 'no chest for set %', p_set_id;
+  end if;
+
+  select t.learner into v_learner from task_sets t where t.id = p_set_id;
+
+  if v_result.chest_reward ? 'pick' then
+    v_reward := v_result.chest_reward->'reward';
+  else
+    if p_pick is null or p_pick not between 1 and 3 then
+      raise exception 'pick must be 1, 2 or 3';
+    end if;
+    v_reward := v_result.chest_reward->'rolls'->(p_pick - 1);
+
+    update results
+      set chest_reward = results.chest_reward
+        || jsonb_build_object('pick', p_pick, 'reward', v_reward, 'opened_at', now())
+      where id = v_result.id;
+
+    if v_reward->>'type' = 'stars' then
+      update progress
+        set total_stars = progress.total_stars + (v_reward->>'stars')::int, updated_at = now()
+        where learner = v_learner;
+    else
+      if extract(isodow from v_next) = 7 then v_next := v_next + 1; end if;
+      update progress set double_on = v_next, updated_at = now() where learner = v_learner;
+    end if;
+  end if;
+
+  reward_type := v_reward->>'type';
+  reward_stars := coalesce((v_reward->>'stars')::int, 0);
+  select p.total_stars, p.double_on into total_stars, double_on
+  from progress p where p.learner = v_learner;
+  return next;
+end;
+$$;
+
+grant execute on function open_chest(uuid, int) to anon;
+
+-- Back-compat for clients still calling the old name; the stars argument
+-- was never trusted and is now ignored entirely.
+create or replace function add_stars(p_set_id uuid, p_stars int)
+returns table(total_stars int, streak int, badges jsonb, new_badges jsonb)
+language sql
+security definer
+set search_path = public
+as $$
+  select r.total_stars, r.streak, r.badges, r.new_badges from record_progress(p_set_id) r;
+$$;
+
+grant execute on function add_stars(uuid, int) to anon;
+
+-- weekly_stats(learner): aggregates only for the last 7 Vilnius-local days,
+-- scoped to one learner (SPEC.md §7.2, §13). Security definer so it can read
+-- results, but it never returns raw answers. Defaults to 'h' so old
+-- clients calling weekly_stats() with no args keep working. The L-only
+-- fields (avg_wpm_by_day, syllable_build_accuracy_pct,
+-- comprehension_accuracy_pct, top_error_words) are cheap to compute for
+-- everyone and are simply empty/null for a learner with no such items.
+create or replace function weekly_stats(p_learner text default 'h')
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  with today as (select (now() at time zone 'Europe/Vilnius')::date as d),
+  done as (
+    select r.id as result_id, t.scheduled_date, r.answers, t.items,
+      r.stars_multiplier,
+      coalesce((r.chest_reward->'reward'->>'stars')::int, 0) as chest_stars
+    from results r
+    join task_sets t on t.id = r.task_set_id
+    cross join today
+    where r.interrupted = false
+      and t.learner = p_learner
+      and t.scheduled_date between today.d - 6 and today.d
+  ),
+  ans as (
+    select d.result_id, d.scheduled_date, a.value as a,
+      (select i->>'type' from jsonb_array_elements(d.items) i
+        where i->>'id' = a.value->>'item_id' limit 1) as itype
+    from done d
+    cross join lateral jsonb_array_elements(d.answers) a
+  ),
+  scored as (
+    select scheduled_date, itype,
+      (a->>'correct')::boolean as ok,
+      coalesce((a->>'seconds')::numeric, 0) as secs
+    from ans
+    where jsonb_typeof(a->'correct') = 'boolean'
+  ),
+  -- answer stars x the day's multiplier (Dviguba diena), plus chest stars (§7.4)
+  stars as (
+    select (
+      coalesce((select sum(
+        case when (ans.a->>'correct')::boolean is true
+             then least(greatest(coalesce((ans.a->>'stars')::int, 0), 0), 2)
+             else 0 end * d.stars_multiplier
+      ) from ans join done d on d.result_id = ans.result_id), 0)
+      + coalesce((select sum(chest_stars) from done), 0)
+    )::int as n
+  ),
+  by_day as (
+    select scheduled_date,
+      extract(isodow from scheduled_date)::int as dow,
+      count(*)::int as total,
+      (count(*) filter (where ok))::int as correct,
+      round(100.0 * count(*) filter (where ok) / count(*))::int as accuracy_pct,
+      round(avg(secs), 1) as avg_seconds
+    from scored
+    group by scheduled_date
+  ),
+  by_type as (
+    select itype as type,
+      count(*)::int as total,
+      (count(*) filter (where ok))::int as correct,
+      round(100.0 * count(*) filter (where ok) / count(*))::int as accuracy_pct
+    from scored
+    where itype is not null
+    group by itype
+  ),
+  -- L extras (SPEC.md §13): read_aloud answers carry words_per_minute
+  -- and error_words[] inside `answer` (never scored/autochecked, so they
+  -- don't appear in `scored` above).
+  wpm_rows as (
+    select scheduled_date, (a->'answer'->>'words_per_minute')::numeric as wpm
+    from ans
+    where itype = 'read_aloud' and a->'answer'->>'words_per_minute' is not null
+      and coalesce((a->>'rushed')::boolean, false) = false  -- tap-through reads (§13.4)
+  ),
+  wpm_by_day as (
+    select scheduled_date, extract(isodow from scheduled_date)::int as dow,
+      round(avg(wpm), 1) as avg_wpm
+    from wpm_rows
+    group by scheduled_date
+  ),
+  error_words as (
+    select trim(both '"' from w::text) as word
+    from ans
+    cross join lateral jsonb_array_elements(coalesce(a->'answer'->'error_words', '[]'::jsonb)) w
+    where itype = 'read_aloud'
+  ),
+  top_errors as (
+    select word, count(*)::int as n
+    from error_words
+    where word <> ''
+    group by word
+    order by n desc, word
+    limit 10
+  )
+  select jsonb_build_object(
+    'sets_completed', (select count(*) from done),
+    'total_items', (select count(*) from scored),
+    'correct_items', (select count(*) from scored where ok),
+    'accuracy_pct', (select round(100.0 * count(*) filter (where ok) / nullif(count(*), 0))::int from scored),
+    'avg_seconds_per_item', (select round(avg(secs), 1) from scored),
+    'stars_earned', (select n from stars),
+    'best_day', (select to_jsonb(b) from (
+        select scheduled_date as date, dow, accuracy_pct, total
+        from by_day order by accuracy_pct desc, total desc limit 1) b),
+    'fastest_day', (select to_jsonb(f) from (
+        select scheduled_date as date, dow, avg_seconds
+        from by_day order by (total >= 5) desc, avg_seconds asc limit 1) f),
+    'by_type', coalesce((select jsonb_agg(to_jsonb(t) order by t.total desc) from by_type t), '[]'::jsonb),
+    'by_day', coalesce((select jsonb_agg(jsonb_build_object(
+        'date', scheduled_date, 'dow', dow, 'total', total, 'correct', correct,
+        'accuracy_pct', accuracy_pct, 'avg_seconds', avg_seconds) order by scheduled_date) from by_day), '[]'::jsonb),
+    'avg_wpm_by_day', coalesce((select jsonb_agg(jsonb_build_object(
+        'date', scheduled_date, 'dow', dow, 'avg_wpm', avg_wpm) order by scheduled_date) from wpm_by_day), '[]'::jsonb),
+    'syllable_build_accuracy_pct', (select accuracy_pct from by_type where type = 'syllable_build' limit 1),
+    'comprehension_accuracy_pct', (select accuracy_pct from by_type where type = 'choice' limit 1),
+    'top_error_words', coalesce((select jsonb_agg(jsonb_build_object('word', word, 'count', n)) from top_errors), '[]'::jsonb)
+  );
+$$;
+
+grant execute on function weekly_stats(text) to anon;
+
+-- week_status(learner): per-day set counts and scores for the timetable pages
+-- (/h, /l), which have no results access. Aggregates only — {date,total,done,
+-- correct,scored} for the learner's sets from 14 days back to tomorrow; `done` =
+-- sets with a non-interrupted result, `correct`/`scored` = correct_count /
+-- total_autochecked of each set's FIRST completed result (so a replay can't
+-- change the shown score). Whether a not-done past day is "missed" is decided
+-- by the page (SPEC.md §8.1).
+create or replace function week_status(p_learner text default 'h')
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  with today as (select (now() at time zone 'Europe/Vilnius')::date as d)
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'date', s.scheduled_date, 'total', s.total, 'done', s.done,
+      'correct', s.correct, 'scored', s.scored) order by s.scheduled_date), '[]'::jsonb)
+  from (
+    select t.scheduled_date,
+      count(*)::int as total,
+      (count(r.id))::int as done,
+      coalesce(sum(r.correct_count), 0)::int as correct,
+      coalesce(sum(r.total_autochecked), 0)::int as scored
+    from task_sets t
+    cross join today
+    left join lateral (
+      select x.id, x.correct_count, x.total_autochecked
+      from results x
+      where x.task_set_id = t.id and x.interrupted = false
+      order by x.submitted_at
+      limit 1
+    ) r on true
+    where t.learner = p_learner
+      and t.scheduled_date between today.d - 14 and today.d + 1
+    group by t.scheduled_date
+  ) s;
+$$;
+
+grant execute on function week_status(text) to anon;
+
+-- Least-privilege grants (2026-10-18)
+-- RLS alone was blocking writes; take the table-level privileges away too.
+-- Safe to re-run. Sweep 2026-10-18 #2, #3, #7.
+
+-- 1. Nothing by default for the public-facing roles.
+revoke all on all tables in schema public from anon, authenticated;
+revoke all on all sequences in schema public from anon, authenticated;
+
+-- 2. Re-grant exactly what the app uses.
+grant select on task_sets, progress to anon;
+grant insert (task_set_id, answers, correct_count, total_autochecked,
+              duration_seconds, interrupted, learner, submitted_at)
+  on results to anon;
+
+-- 3. Functions: the anon key may call the app's RPCs; nobody else needs to.
+--    add_stars is kept because cached iPad pages may still call it.
+--    chest_roll is internal (called from open_chest) and was granted to
+--    authenticated only.
+revoke execute on function add_stars(uuid, int), chest_ready(uuid),
+  open_chest(uuid, int), record_progress(uuid), weekly_stats(text),
+  week_status(text), chest_roll(uuid, int) from public, authenticated;
+grant execute on function add_stars(uuid, int), chest_ready(uuid),
+  open_chest(uuid, int), record_progress(uuid), weekly_stats(text),
+  week_status(text) to anon;
+
+-- 4. New tables/functions created later don't get these grants back.
+alter default privileges in schema public revoke all on tables
+  from anon, authenticated;
+alter default privileges in schema public revoke all on functions
+  from anon, authenticated;
+-- Postgres gives PUBLIC execute on every new function; the schema-scoped revoke
+-- above cannot remove that, so revoke it for objects created by postgres.
+-- Future RPCs must `grant execute ... to anon` explicitly (as above).
+alter default privileges for role postgres revoke execute on functions
+  from public;
+alter default privileges in schema public revoke all on sequences
+  from anon, authenticated;
+alter default privileges for role postgres in schema public
+  revoke all on sequences from anon, authenticated;
+-- Not changed: supabase_admin's default ACL in public (postgres cannot alter it).
+
+-- 5. FK lookups on results (sweep #7).
+create index if not exists results_task_set_id_idx on results (task_set_id);

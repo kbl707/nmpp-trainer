@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="lt">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta http-equiv="Cache-Control" content="no-cache" />
+<title>NMPP treniruotė</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app" aria-live="polite">
+    <div id="app-header">
+      <div class="switch">
+        <a href="./" aria-current="page"><span aria-hidden="true">👽 </span>H</a>
+        <a href="l/uzduotys/"><span aria-hidden="true">⭐ </span>L</a>
+      </div>
+      <span id="stars-badge" hidden>⭐ 0</span>
+      <button type="button" id="sound-toggle" aria-pressed="false" aria-label="Garsas išjungtas">🔇</button>
+    </div>
+    <div id="praise-toast" aria-live="polite" hidden></div>
+    <div id="topbar" hidden>
+      <div id="progress-track"><div id="progress-fill"></div></div>
+      <div id="topbar-row">
+        <span id="progress-label"></span>
+        <span id="timer" role="timer" aria-label="Praėjęs laikas"></span>
+      </div>
+    </div>
+    <main id="screen">
+      <p class="loading">Kraunama…</p>
+    </main>
+    <footer id="app-version" data-html-version="__APP_VERSION__"></footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" integrity="sha384-TcHRA3zBbn+Lexh5n+Oil4guNPOS3rjNDpGRAN46u/s/mB2IZ50ceC6TYDU2yvgK" crossorigin="anonymous"></script>
+  <script src="config.js"></script>
+  <script src="svg.js"></script>
+  <script src="games.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

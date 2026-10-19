@@ -1,0 +1,1 @@
+Copy of ~/.claude/skills/ledger refreshed 2026-10-18 by init.sh. Edit the original, rerun init.
