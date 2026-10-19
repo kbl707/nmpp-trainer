@@ -90,7 +90,7 @@ Read 2026-10-18 from the live DB (`task_sets`, `results`, `progress`);
 | Item | Owner | Due | Where |
 |---|---|---|---|
 | Add first-attempt accuracy by type + L WPM to Numbers | advisor | next weekly review (2026-10-25) | this file |
-| Verify the first school-sync run with h/l (log shows `[eduka:h] ok` and `[eduka:l] ok`, digest arrives) | advisor | Tue 2026-10-20 after 07:00 | `~/Library/Logs/school-sync/launchd.log` |
+| Confirm the scheduled 07:00 school-sync run sends the real digest | advisor | Tue 2026-10-20 | `~/Library/Logs/school-sync/launchd.log` |
 | A flush insert that always fails (e.g. a deleted set) now retries on every load (review of PR #7, low) | advisor | next sweep | `games.js` `flushAbandoned` |
 | school-sync: the digest dry-run test has been failing on master since 2063da0 (pre-existing) | advisor | next sweep | school-sync `test/pipeline.test.mjs` |
 | `weekly_reviews` has no schema in any repo (the `school_*` tables are in school-sync `supabase/school.sql`) | advisor | with ANON-ids-site | `supabase/` |
@@ -125,6 +125,17 @@ Read 2026-10-18 from the live DB (`task_sets`, `results`, `progress`);
   `docs/briefs/` — executor briefs, one file per PR
 
 ## How we work
-Process: `~/.claude/skills/ledger/SKILL.md` (copy in
-`.claude/skills/ledger/`). Summary in `CLAUDE.md`. Local preview:
-`python3 -m http.server 8123` (launch config `static`).
+Which chat does what:
+- **Claude Desktop project "nmpp-trainer"** (it reads `docs/`): the weekly
+  review and daily content. It reads `results`, writes `task_sets` (learner
+  `h` / `l`) and answers "how is it going?". It never changes the schema,
+  RPCs or app code. A content idea that needs a new item type or an app
+  change becomes a markdown request, which the operator pastes into the
+  advisor chat.
+- **Advisor (Claude Code, this repo)**: app and DB changes, briefs,
+  executors, reviews, deploys, sweeps, and this file. `/ledger sync` files a
+  pasted Desktop result under `docs/inbox/`.
+- **Executors**: one brief = one PR, started by the advisor.
+Process: `~/.claude/skills/ledger/SKILL.md` (copy in `.claude/skills/ledger/`).
+Summary in `CLAUDE.md`. Local preview: `python3 -m http.server 8123`
+(launch config `static`).
