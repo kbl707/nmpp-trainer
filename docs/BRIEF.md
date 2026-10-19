@@ -94,10 +94,7 @@ Read 2026-10-18 from the live DB (`task_sets`, `results`, `progress`);
 | school-sync: the digest dry-run test has been failing on master since 2063da0 (pre-existing) | advisor | next sweep | school-sync `test/pipeline.test.mjs` |
 | `weekly_reviews` has no schema in any repo (the `school_*` tables are in school-sync `supabase/school.sql`) | advisor | with ANON-ids-site | `supabase/` |
 | `progress.streak` never decays after missed days (it's only recomputed on completion), and the interrupted-only path returns the stored streak (review of PR #5, low) | advisor | next sweep | `record_progress` |
-| Claude Desktop project: remove and re-add the GitHub source (`docs/` only), because the repo was recreated | operator | before the next side chat | SKILL "Claude Desktop setup" |
-| Set your global git email to the noreply address (`git config --global user.email 110578208+kbl707@users.noreply.github.com`); this repo already has it set locally | operator | — | — |
 | Delete `kbl707/nmpp-trainer-archive` once the old PR threads are no longer needed (irreversible) | operator | when ready | GitHub settings |
-| Set up Claude Desktop project synced to `docs/` | operator | — | SKILL "Claude Desktop setup" |
 | Timetables `/h` `/l` need the `?date=` + `week_status` tweak if the external generator is re-run | operator | on regen | README "Pages" |
 
 ## Map
