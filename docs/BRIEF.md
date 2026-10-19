@@ -44,9 +44,10 @@ All UI copy is Lithuanian; the child has a named diagnosis (SPEC §7).
   `/l/uzduotys/`. Every writer must use `h` / `l`, because the old ids now fail
   the checks.
 - Fresh history since 2026-10-19: this public repo has one root commit
-  (860918d). The old history and the PR threads #1–#8 cited in `docs/` live
-  in the private `kbl707/nmpp-trainer-archive`, so PR links here resolve
-  there.
+  (860918d). The archive repo was deleted on 2026-10-19. The old history and
+  the PR threads #1–#8 cited in `docs/` exist only in the operator's local
+  backup (`~/Documents/python/nmpp-trainer-archive-backup`, private, holds
+  names) and in the local tag `pre-fresh-history`.
 - First weekly sweep 2026-10-18 (`docs/sweeps/2026-10-18.md`): no incidents,
   7 findings, decisions recorded there.
 - Nothing known broken (operator, 2026-10-19); sweep 2026-10-18 found no
@@ -94,7 +95,6 @@ Read 2026-10-18 from the live DB (`task_sets`, `results`, `progress`);
 | school-sync: the digest dry-run test has been failing on master since 2063da0 (pre-existing) | advisor | next sweep | school-sync `test/pipeline.test.mjs` |
 | `weekly_reviews` has no schema in any repo (the `school_*` tables are in school-sync `supabase/school.sql`) | advisor | with ANON-ids-site | `supabase/` |
 | `progress.streak` never decays after missed days (it's only recomputed on completion), and the interrupted-only path returns the stored streak (review of PR #5, low) | advisor | next sweep | `record_progress` |
-| Delete `kbl707/nmpp-trainer-archive` once the old PR threads are no longer needed (irreversible) | operator | when ready | GitHub settings |
 | Timetables `/h` `/l` need the `?date=` + `week_status` tweak if the external generator is re-run | operator | on regen | README "Pages" |
 
 ## Map
