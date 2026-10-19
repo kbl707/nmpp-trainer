@@ -41,8 +41,12 @@ All UI copy is Lithuanian; the child has a named diagnosis (SPEC §7).
   catch-up via `?date=` keeps it.
 - Anonymised on 2026-10-19 (decision #8, PRs #6, #7, school-sync #1): DB
   learner ids are `h` / `l`, the site shows 👽 H / ⭐ L, and L's trainer is at
-  `/l/uzduotys/` (`/<old L path>/` redirects until the fresh-history swap). Every
-  writer must use `h` / `l`, because the old ids now fail the checks.
+  `/l/uzduotys/`. Every writer must use `h` / `l`, because the old ids now fail
+  the checks.
+- Fresh history since 2026-10-19: this public repo has one root commit
+  (860918d). The old history and the PR threads #1–#8 cited in `docs/` live
+  in the private `kbl707/nmpp-trainer-archive`, so PR links here resolve
+  there.
 - First weekly sweep 2026-10-18 (`docs/sweeps/2026-10-18.md`): no incidents,
   7 findings, decisions recorded there.
 - Nothing known broken (operator, 2026-10-19); sweep 2026-10-18 found no
@@ -86,11 +90,13 @@ Read 2026-10-18 from the live DB (`task_sets`, `results`, `progress`);
 |---|---|---|---|
 | Add first-attempt accuracy by type + L WPM to Numbers | advisor | next weekly review (2026-10-25) | this file |
 | Verify the first school-sync run with h/l (log shows `[eduka:h] ok` and `[eduka:l] ok`, digest arrives) | advisor | Tue 2026-10-20 after 07:00 | `~/Library/Logs/school-sync/launchd.log` |
-| Fresh git history (decision #8): runbook steps 0–4 | advisor + operator | after the two items above | `docs/briefs/RUN-fresh-history.md` |
 | A flush insert that always fails (e.g. a deleted set) now retries on every load (review of PR #7, low) | advisor | next sweep | `games.js` `flushAbandoned` |
 | school-sync: the digest dry-run test has been failing on master since 2063da0 (pre-existing) | advisor | next sweep | school-sync `test/pipeline.test.mjs` |
 | `weekly_reviews` has no schema in any repo (the `school_*` tables are in school-sync `supabase/school.sql`) | advisor | with ANON-ids-site | `supabase/` |
 | `progress.streak` never decays after missed days (it's only recomputed on completion), and the interrupted-only path returns the stored streak (review of PR #5, low) | advisor | next sweep | `record_progress` |
+| Claude Desktop project: remove and re-add the GitHub source (`docs/` only), because the repo was recreated | operator | before the next side chat | SKILL "Claude Desktop setup" |
+| Set your global git email to the noreply address (`git config --global user.email 110578208+kbl707@users.noreply.github.com`); this repo already has it set locally | operator | — | — |
+| Delete `kbl707/nmpp-trainer-archive` once the old PR threads are no longer needed (irreversible) | operator | when ready | GitHub settings |
 | Set up Claude Desktop project synced to `docs/` | operator | — | SKILL "Claude Desktop setup" |
 | Timetables `/h` `/l` need the `?date=` + `week_status` tweak if the external generator is re-run | operator | on regen | README "Pages" |
 

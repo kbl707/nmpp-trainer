@@ -100,7 +100,7 @@ children.
 Verdict / revisit: done when `git grep -i -E "h[e]nris|l[i]lija|a[g]urkas|d[y]sgraph"`
 on the new repo returns nothing, the live site shows no names, and
 `select distinct learner` on every table returns only `h`, `l`.
-Status: OPEN
+Status: PASS
 NOTE 2026-10-19: this decision overrides the append-only rule for the
 anonymisation edit only. Old entries may have names replaced by H/L; nothing
 else in them changes.
@@ -108,6 +108,10 @@ NOTE 2026-10-19: ids, site and docs done (PRs #6, #7, school-sync #1,
 migration anon_ids_2026_10_20). `select distinct learner` returns only h/l
 in all 8 tables. Still open: the docs/ ledger files and the fresh git
 history (RUN-fresh-history).
+NOTE 2026-10-19: PASS. The new public repo has one commit (noreply author);
+the name grep on it and on the live pages returns nothing; `select distinct
+learner` returns only h/l in all 8 tables. The old history is in the private
+`kbl707/nmpp-trainer-archive`; deleting it is the operator's call.
 
 ## #9 — school-sync goes into a private repo · 2026-10-19 · decided by operator
 Decision: school-sync (launchd `lt.school-sync`, code in
