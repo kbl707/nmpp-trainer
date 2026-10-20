@@ -90,7 +90,7 @@ Read 2026-10-18 from the live DB (`task_sets`, `results`, `progress`);
 | Item | Owner | Due | Where |
 |---|---|---|---|
 | Add first-attempt accuracy by type + L WPM to Numbers | advisor | next weekly review (2026-10-25) | this file |
-| Confirm the scheduled 07:00 school-sync run sends the real digest | advisor | Tue 2026-10-20 | `~/Library/Logs/school-sync/launchd.log` |
+| school-sync digests land in Gmail **Trash**, unread (every one since 2026-10-14), most likely a Gmail filter on the sender: check Gmail → Settings → Filters | operator | — | Gmail |
 | A flush insert that always fails (e.g. a deleted set) now retries on every load (review of PR #7, low) | advisor | next sweep | `games.js` `flushAbandoned` |
 | school-sync: the digest dry-run test has been failing on master since 2063da0 (pre-existing) | advisor | next sweep | school-sync `test/pipeline.test.mjs` |
 | `weekly_reviews` has no schema in any repo (the `school_*` tables are in school-sync `supabase/school.sql`) | advisor | with ANON-ids-site | `supabase/` |
