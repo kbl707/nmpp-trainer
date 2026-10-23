@@ -112,6 +112,7 @@ NOTE 2026-10-19: PASS. The new public repo has one commit (noreply author);
 the name grep on it and on the live pages returns nothing; `select distinct
 learner` returns only h/l in all 8 tables. The old history is in the private
 `kbl707/nmpp-trainer-archive`; deleting it is the operator's call.
+NOTE 2026-10-23: L's emoji changed from ⭐ to 💍 at her request (PR #1 on the new repo, 2657add). Still emoji + letter, no names.
 
 ## #9 — school-sync goes into a private repo · 2026-10-19 · decided by operator
 Decision: school-sync (launchd `lt.school-sync`, code in

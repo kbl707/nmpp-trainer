@@ -40,7 +40,7 @@ All UI copy is Lithuanian; the child has a named diagnosis (SPEC §7).
 - An unfinished today no longer resets the streak (PR #5, 2026-10-19), so
   catch-up via `?date=` keeps it.
 - Anonymised on 2026-10-19 (decision #8, PRs #6, #7, school-sync #1): DB
-  learner ids are `h` / `l`, the site shows 👽 H / ⭐ L, and L's trainer is at
+  learner ids are `h` / `l`, the site shows 👽 H / 💍 L, and L's trainer is at
   `/l/uzduotys/`. Every writer must use `h` / `l`, because the old ids now fail
   the checks.
 - Fresh history since 2026-10-19: this public repo has one root commit
