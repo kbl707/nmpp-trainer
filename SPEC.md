@@ -526,8 +526,9 @@ keys inside the existing `answers[]` jsonb.
 ## 7.4 Treasure chest & avatar
 
 **Avatar.** H's emoji is 👽: it prefixes H's label in the header
-switcher (on both pages: `👽 H`, `⭐ L`) and replaces the ⭐ above „Šiandien — atlikta!“ on
-his end screen. L keeps ⭐ there. The `⭐ n` stars badge is the currency
+switcher (on both pages: `👽 H`, `💍 L`) and replaces the ⭐ above „Šiandien — atlikta!“ on
+his end screen. L's emoji is 💍 (her own pick), used the same way on her
+switcher label and end screen. The `⭐ n` stars badge is the currency
 and is unchanged for both.
 
 **Chest.** Both learners get one treasure chest after a completed set

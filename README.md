@@ -151,7 +151,7 @@ day earns 2× stars). The three rewards are rolled by `record_progress` at
 completion — seeded by the result id and stored in `results.chest_reward` — so
 a refresh can't re-roll; `open_chest(set_id, pick)` records the pick and
 applies the reward, and `anon` has no INSERT grant on the reward columns.
-Both switcher labels are emoji + letter: 👽 H and ⭐ L (H's end-screen emoji is 👽, L's ⭐).
+Both switcher labels are emoji + letter: 👽 H and 💍 L (H's end-screen emoji is 👽, L's 💍, her own pick).
 
 ### Tap-to-advance reading (SPEC.md §13.4)
 
