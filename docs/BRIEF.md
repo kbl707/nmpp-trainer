@@ -90,7 +90,7 @@ Read 2026-10-18 from the live DB (`task_sets`, `results`, `progress`);
 | Item | Owner | Due | Where |
 |---|---|---|---|
 | Add first-attempt accuracy by type + L WPM to Numbers | advisor | next weekly review (2026-10-25) | this file |
-| school-sync: a run that hits a network error (e.g. the Mac sleeps mid-run) leaves that learner unsynced until the next day; consider one retry (seen 2026-10-21 07:00, low) | advisor | next sweep | school-sync `sync/eduka.mjs` |
+| First school-sync day on the new schedule: check the logs for a retry or catch-up line (WARN … retrying once, or 'catch-up run') | advisor | Sat 2026-10-24 evening | `~/Library/Logs/school-sync/` |
 | A flush insert that always fails (e.g. a deleted set) now retries on every load (review of PR #7, low) | advisor | next sweep | `games.js` `flushAbandoned` |
 | school-sync: the digest dry-run test has been failing on master since 2063da0 (pre-existing) | advisor | next sweep | school-sync `test/pipeline.test.mjs` |
 | `weekly_reviews` has no schema in any repo (the `school_*` tables are in school-sync `supabase/school.sql`) | advisor | with ANON-ids-site | `supabase/` |
@@ -113,7 +113,8 @@ Read 2026-10-18 from the live DB (`task_sets`, `results`, `progress`);
   (2) **school-sync**, private repo `kbl707/school-sync` (source
   `~/Documents/python/school-sync`), installed by `scripts/install-local.sh`
   into `~/Library/Application Support/school-sync/app` and run by launchd
-  `lt.school-sync` Mon–Sat 07:00 (log `~/Library/Logs/school-sync/
+  `lt.school-sync` Mon–Sat 07:00, with catch-up slots at 12:00/17:00/20:00 that
+  redo only what is missing (state in `…/school-sync/today.json`) (log `~/Library/Logs/school-sync/
   launchd.log`, secrets in Keychain). It syncs Eduka into `school_*`/
   `sync_runs` (schema in its `supabase/school.sql`) and emails a digest.
 - External: GitHub `kbl707/nmpp-trainer` (public) (Pages + secrets
