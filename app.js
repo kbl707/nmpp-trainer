@@ -15,8 +15,8 @@
   // deploy workflow — scripts/stamp-version.py. The footer shows what is really
   // RUNNING: if a stale app.js is served next to a fresh page, the two differ.
   const APP_VERSION = "__APP_VERSION__";
-  // End-screen emoji: H is the alien, L keeps the star.
-  const AVATAR = LEARNER === "l" ? "⭐" : "👽";
+  // End-screen emoji: H is the alien, L the ring (her own pick).
+  const AVATAR = LEARNER === "l" ? "💍" : "👽";
 
   const screenEl = document.getElementById("screen");
   const topbarEl = document.getElementById("topbar");
