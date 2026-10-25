@@ -94,7 +94,6 @@ Read 2026-10-25 from the live DB (`task_sets`, `results`, `progress`);
 |---|---|---|---|
 | Weekly review 2026-11-01: did H's first-try accuracy move (target > 75%) and L's WPM median rise with the new daily texts? Ask H the exact date of the maths test | advisor | Sun 2026-11-01 | `weekly_reviews`, `results` |
 | H's YouTube: long live streams with open chat (3–6 h, Rivals/Fortnite customs) — consider YouTube supervised account / chat off | operator | — | YouTube settings |
-| Which Skučaitė poem did L pick? Add it as a read_aloud if useful | operator | Mon 2026-10-26 | — |
 | Timetable: show a day with no set as grey 'Užduotys neparuoštos', not red 'Praleista'; morning digest warns when fewer than 2 days of sets are left | advisor → briefs | — | `h/`, `l/`, school-sync |
 | Verify the first scheduled run of `calendar-eduka-done` (Mon 2026-10-26 07:30) did the right thing | advisor | Mon 2026-10-26 | Scheduled tasks pane, `docs/ops-log.md` |
 | Desktop review instructions: add 'each task calendar event description carries `eduka:<external_id>` lines (decision #10)' | operator | before tonight's review | Claude Desktop project |
