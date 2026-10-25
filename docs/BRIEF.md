@@ -93,6 +93,8 @@ Read 2026-10-18 from the live DB (`task_sets`, `results`, `progress`);
 |---|---|---|---|
 | **No sets exist from Mon 2026-10-26 for either learner.** Weekly review + next week's sets, done in the advisor chat this time (operator's call), after H and L finish their Saturday 2026-10-24 sets | advisor | before Mon 2026-10-26 | DB `task_sets` |
 | Timetable: show a day with no set as grey 'Užduotys neparuoštos', not red 'Praleista'; morning digest warns when fewer than 2 days of sets are left | advisor → briefs | — | `h/`, `l/`, school-sync |
+| Create the daily calendar routine `calendar-eduka-done` (prompt in `docs/briefs/ROUTINE-calendar-eduka-done.md`): blocked by the auto-mode permission classifier; operator allows `mcp__scheduled-tasks__create_scheduled_task` or creates it from the saved prompt | operator + advisor | — | scheduled tasks |
+| Desktop review instructions: add 'each task calendar event description carries `eduka:<external_id>` lines (decision #10)' | operator | before tonight's review | Claude Desktop project |
 | Add first-attempt accuracy by type + L WPM to Numbers | advisor | next weekly review (2026-10-25) | this file |
 | First school-sync day on the new schedule: check the logs for a retry or catch-up line (WARN … retrying once, or 'catch-up run') | advisor | Sat 2026-10-24 evening | `~/Library/Logs/school-sync/` |
 | A flush insert that always fails (e.g. a deleted set) now retries on every load (review of PR #7, low) | advisor | next sweep | `games.js` `flushAbandoned` |
