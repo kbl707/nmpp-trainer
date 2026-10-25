@@ -85,6 +85,8 @@ Read 2026-10-18 from the live DB (`task_sets`, `results`, `progress`);
 - #8 Anonymise everything public to H / L, including DB ids and git
   history (2026-10-19)
 - #9 school-sync in a private repo `kbl707/school-sync` (2026-10-19)
+- #10 Calendar task events carry `eduka:<external_id>` in the description;
+  a daily routine marks done ones `DONE ✓` (2026-10-25)
 
 ## Open items
 | Item | Owner | Due | Where |
@@ -134,7 +136,10 @@ Which chat does what:
   `h` / `l`) and answers "how is it going?". It never changes the schema,
   RPCs or app code. A content idea that needs a new item type or an app
   change becomes a markdown request, which the operator pastes into the
-  advisor chat.
+  advisor chat. **Calendar events for school tasks** (`HENRIS · už 2 d.: …`,
+  `LILIJA · už 2 d.: …`): the description must contain one line per Eduka
+  task, `eduka:<external_id>` (from `school_topics.external_id`), so the
+  daily routine can mark it done (decision #10).
 - **Advisor (Claude Code, this repo)**: app and DB changes, briefs,
   executors, reviews, deploys, sweeps, and this file. `/ledger sync` files a
   pasted Desktop result under `docs/inbox/`.

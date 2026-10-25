@@ -130,3 +130,19 @@ Application Support, which is the copy launchd runs. Secrets live in the
 macOS Keychain (service `school-sync`), not in files. The advisor's earlier
 "not in git" claim came from looking only at the installed copy. Own ledger
 for school-sync: optional, not started.
+
+## #10 — Calendar task events track Eduka status daily · 2026-10-25 · decided by operator
+Decision: the "HENRIS/LILIJA · už 2 d." calendar events get a stable link to
+the Eduka task, and a daily Claude routine marks the done ones. Convention:
+every task event's description carries one line per Eduka task,
+`eduka:<external_id>` (the `school_topics.external_id`, e.g.
+`eduka:lm:61643044:trial`). Done = `school_topics.status` in
+(`atlikta`, `peržiūrėta`). The routine prepends `DONE ✓ ` to the title of a
+done event (the convention already used by hand), touches only events whose
+description carries an `eduka:` tag, and never creates, moves or deletes
+events. school-sync stays Google-free (its SPEC rules out Google access).
+Why: the events were created once by the weekly review and never updated, so
+finished tasks still showed as due. The daily sync already knows the status.
+Verdict / revisit: after one week, every event for a task Eduka marks done
+shows `DONE ✓`, and no event was changed wrongly.
+Status: OPEN
