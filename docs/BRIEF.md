@@ -58,9 +58,9 @@ Read 2026-11-01 from the live DB; "this week" = scheduled 2026-10-26 → 10-31.
 | | H | L |
 |---|---|---|
 | Sets completed | 6 / 7 (10-28 only interrupted, 4 items) | 6 / 6 (4 of them on Sun 11-01) |
-| First-attempt accuracy | 75% (was 64); quick_math 96 (was 79) | 84% (was 88); syllable_build 79, b/d flash passes 4/7 |
+| First-attempt accuracy | 75% (was 64); quick_math 96 (was 79) | 84% (was 88); syllable_build 79, b/d flash 88% correct on completed sets (the app's 90% pass mark is not accuracy) |
 | Caveat | week 9's choice/gap scores are inflated: right answer was listed first | same |
-| Reading speed (L) | — | last credible read 12 wpm (10-27, ~4 s/word). Reads since 10-24 are mostly tap-throughs (median 280–475 ms/word): their 64–153 wpm is NOT reading speed |
+| Reading speed (L) | — | oral speed unknown (never timed by a person); last credible tap read 12 wpm (10-27, ~4 s/word). Reads since 10-24 are mostly tap-throughs (median 280–475 ms/word): their 64–153 wpm is NOT reading speed |
 | Streak · total stars | 3 · 1124 ⭐ | 22 · 496 ⭐ |
 | Runway | to 2026-11-07 | to 2026-11-07 |
 - days to NMPP: 120 to reading (2027-03-01), 122 to maths (2027-03-03)
@@ -91,7 +91,7 @@ Read 2026-11-01 from the live DB; "this week" = scheduled 2026-10-26 → 10-31.
 | Item | Owner | Due | Where |
 |---|---|---|---|
 | H's YouTube: long live streams with open chat (3–6 h, Rivals/Fortnite customs) — consider YouTube supervised account / chat off | operator | — | YouTube settings |
-| L reading research running in a separate session; file with `/ledger sync` when done, then decide routine + app changes | advisor | when it reports | `docs/inbox/2026-11-01-l-reading-research.md` |
+| Decide on L's reading plan: ~7 min daily read aloud with a parent, stopwatched baseline in the break, tablet stops reporting speed (research filed) | operator | before Tue 2026-11-03 for the baseline | `docs/inbox/2026-11-01-l-reading-research.md` |
 | Decide: `line_find` for H as a reading skill? Keep 'su tėčiu' writing aids? (decision #11) | operator | next review | `docs/decisions.md` |
 | L's 1-minute read with a parent (Sat 11-07 set): operator reports words and errors | operator | 2026-11-08 review | — |
 | Calendar routine's done rule misses Eduka status `įvertinta` (new, seen on H) | advisor | next sweep | `docs/briefs/ROUTINE-calendar-eduka-done.md` |
@@ -132,7 +132,7 @@ Read 2026-11-01 from the live DB; "this week" = scheduled 2026-10-26 → 10-31.
   id `loccjeqdokzazmjgsyxj`
 - `docs/ops-log.md` — what changed outside git, append-only
 - `docs/decisions.md` — numbered decisions register
-- `docs/inbox/` — results from side chats; `docs/sweeps/` — sweeps;
+- `docs/inbox/` — results from side chats (L reading research 2026-11-01); `docs/sweeps/` — sweeps;
   `docs/briefs/` — executor briefs, one file per PR
 
 ## How we work
