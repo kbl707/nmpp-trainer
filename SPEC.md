@@ -838,7 +838,7 @@ self_rating, error_words }` — and, on the answer *entry* itself (alongside
 |---|---|
 | `word_times` | `[ms, …]` — time spent on each word, in text order (`word_count` entries); consecutive taps' differences, first tap → word 1 done, … → last word done |
 | `slow_words` | unique words whose time was **more than 2× the median** of this read's `word_times` — computed automatically, shown to the parent as a dotted underline, separate from the parent's `error_words` |
-| `rushed` | `true` only if the read averaged under 300 ms per word (a tap-through without reading); excluded from the weekly WPM average (§13.5) |
+| `rushed` | `true` only if the **median** word time is under 500 ms (a tap-through without reading: an average hid it, one long pause lifted the mean over the old 300 ms limit); excluded from the weekly WPM average (§13.5) |
 
 `seconds` (inside `answer`) is the reading time = `sum(word_times)` rounded to
 whole seconds — the first-tap→last-word span, distinct from the generic
