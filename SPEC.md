@@ -849,8 +849,7 @@ including the review screen). `word_count` is the number of word tiles;
 parent-tapped words (empty array if the toggle was never used).
 
 **Tap-through guard.** `rushed` is not a lock — nothing waits or is disabled;
-it is only a data-quality flag so a child who taps straight through (a 200+
-wpm "read") doesn't pollute the weekly WPM. The parent-marked `error_words`
+it is only a data-quality flag so a child who taps straight through (a tapped-through "read") doesn't pollute the weekly WPM. The parent-marked `error_words`
 and the `slow_words` of such a read are still stored.
 
 **`word_gap`** (auto-checked, same shape/check as `choice`):
