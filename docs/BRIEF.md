@@ -94,7 +94,6 @@ Read 2026-11-01 from the live DB; "this week" = scheduled 2026-10-26 → 10-31.
 | L reading research running in a separate session; file with `/ledger sync` when done, then decide routine + app changes | advisor | when it reports | `docs/inbox/2026-11-01-l-reading-research.md` |
 | Decide: `line_find` for H as a reading skill? Keep 'su tėčiu' writing aids? (decision #11) | operator | next review | `docs/decisions.md` |
 | L's 1-minute read with a parent (Sat 11-07 set): operator reports words and errors | operator | 2026-11-08 review | — |
-| `read_aloud` tap-through flag: PR #2 (median under 500 ms) | advisor | on review | PR #2 |
 | Calendar routine's done rule misses Eduka status `įvertinta` (new, seen on H) | advisor | next sweep | `docs/briefs/ROUTINE-calendar-eduka-done.md` |
 | H's account: Google security alert 10-29, new sign-in from an Apple iPhone: confirm it was family | operator | now | H's school mail |
 | Timetable: show a day with no set as grey 'Užduotys neparuoštos', not red 'Praleista'; morning digest warns when fewer than 2 days of sets are left | advisor → briefs | — | `h/`, `l/`, school-sync |
