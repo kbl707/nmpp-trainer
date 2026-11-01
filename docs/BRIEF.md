@@ -1,6 +1,6 @@
 # nmpp-trainer — brief
 
-As of: 2026-10-25. Rewritten in place; history lives in git.
+As of: 2026-11-01. Rewritten in place; history lives in git.
 Entry point for any chat. Read this first, then the last 7 days of
 `docs/ops-log.md`.
 
@@ -54,20 +54,16 @@ All UI copy is Lithuanian; the child has a named diagnosis (SPEC §7).
   incidents and all five of its fixes are live.
 
 ## Numbers that matter
-Read 2026-10-25 from the live DB (`task_sets`, `results`, `progress`);
-"this week" = scheduled 2026-10-19 → 2026-10-25.
+Read 2026-11-01 from the live DB; "this week" = scheduled 2026-10-26 → 10-31.
 | | H | L |
 |---|---|---|
-| Sets done this week | 7 / 7 | 6 / 6 (one set abandoned twice, finished 3rd try) |
-| Final accuracy (`correct_count`) | 112 / 121 (93%) | 60 / 65 (92%) |
-| **First-attempt accuracy** | **64%** (quick_math 79, number_input 64, choice 54, line_find 0) | syllable_build 83, choice 90, letter_flash b/d 67 |
-| Reading speed (L, non-rushed avg) | — | **20.8 wpm** (week before 28, two before 37); best read 73 |
-| Streak · total stars | 14 · 934 ⭐ | 16 · 367 ⭐ |
-| Runway | 6 days, to 2026-10-31 | 6 days, to 2026-10-31 |
-- days to NMPP: 127 to reading (2027-03-01), 129 to maths (2027-03-03)
-- The number that decides difficulty is first-attempt accuracy, not the
-  final one; H's 64% is the target to move. L's WPM average is dragged down
-  by 5–7 wpm reads (long pauses); watch the median next week.
+| Sets completed | 6 / 7 (10-28 only interrupted, 4 items) | 6 / 6 (4 of them on Sun 11-01) |
+| First-attempt accuracy | 75% (was 64); quick_math 96 (was 79) | 84% (was 88); syllable_build 79, b/d flash passes 4/7 |
+| Reading speed (L) | — | last credible read 12 wpm (10-27, ~4 s/word). Reads since 10-24 are mostly tap-throughs (median 280–475 ms/word): their 64–153 wpm is NOT reading speed |
+| Streak · total stars | 3 · 1124 ⭐ | 22 · 496 ⭐ |
+| Runway | none from 2026-11-02 | none from 2026-11-02 |
+- days to NMPP: 120 to reading (2027-03-01), 122 to maths (2027-03-03)
+- School autumn break 2026-11-02 → 11-08 (per teachers' Classroom posts).
 
 ## Decisions in force
 - #1 Ledger process (2026-10-18)
@@ -92,8 +88,10 @@ Read 2026-10-25 from the live DB (`task_sets`, `results`, `progress`);
 ## Open items
 | Item | Owner | Due | Where |
 |---|---|---|---|
-| Weekly review 2026-11-01: did H's first-try accuracy move (target > 75%) and L's WPM median rise with the new daily texts? Ask H the exact date of the maths test | advisor | Sun 2026-11-01 | `weekly_reviews`, `results` |
 | H's YouTube: long live streams with open chat (3–6 h, Rivals/Fortnite customs) — consider YouTube supervised account / chat off | operator | — | YouTube settings |
+| `read_aloud`: tap-through isn't caught (`rushed` = under 300 ms/word average); WPM is unusable until fixed | advisor → brief | before the next read_aloud week | SPEC §13.4 |
+| Calendar routine's done rule misses Eduka status `įvertinta` (new, seen on H) | advisor | next sweep | `docs/briefs/ROUTINE-calendar-eduka-done.md` |
+| H's account: Google security alert 10-29, new sign-in from an Apple iPhone: confirm it was family | operator | now | H's school mail |
 | Timetable: show a day with no set as grey 'Užduotys neparuoštos', not red 'Praleista'; morning digest warns when fewer than 2 days of sets are left | advisor → briefs | — | `h/`, `l/`, school-sync |
 | Verify the first scheduled run of `calendar-eduka-done` (Mon 2026-10-26 07:30) did the right thing | advisor | Mon 2026-10-26 | Scheduled tasks pane, `docs/ops-log.md` |
 | Desktop review instructions: add 'each task calendar event description carries `eduka:<external_id>` lines (decision #10)' | operator | before tonight's review | Claude Desktop project |
