@@ -1355,9 +1355,7 @@
             if (!slowWords.includes(tile.dataset.word)) slowWords.push(tile.dataset.word);
           }
         });
-        const sortedTimes = wordTimes.slice().sort((a, b) => a - b);
-        const medianMs = sortedTimes.length ? sortedTimes[Math.floor(sortedTimes.length / 2)] : 0;
-        const rushed = wordCount > 0 && medianMs < RUSHED_MEDIAN_MS;
+        const rushed = wordCount > 0 && median(wordTimes) < RUSHED_MEDIAN_MS;
 
         container.innerHTML = `
           <div class="reading-text review"></div>
