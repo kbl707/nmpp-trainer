@@ -86,14 +86,16 @@ Read 2026-11-01 from the live DB; "this week" = scheduled 2026-10-26 → 10-31.
 - #11 H: no eye-training items from 2026-11-02 (2026-11-01)
 - #10 Calendar task events carry `eduka:<external_id>` in the description;
   a daily routine marks done ones `DONE ✓` (2026-10-25)
+- #12 L: reading speed comes only from parent-timed reads on paper; tablet taps
+  are never reported as speed; baseline in the break, then the research plan (2026-11-01)
 
 ## Open items
 | Item | Owner | Due | Where |
 |---|---|---|---|
 | H's YouTube: long live streams with open chat (3–6 h, Rivals/Fortnite customs) — consider YouTube supervised account / chat off | operator | — | YouTube settings |
-| Decide on L's reading plan: ~7 min daily read aloud with a parent, stopwatched baseline in the break, tablet stops reporting speed (research filed) | operator | before Tue 2026-11-03 for the baseline | `docs/inbox/2026-11-01-l-reading-research.md` |
+| L's reading baseline: print sheets and the NŠA list, practise scoring, run Tue 3, Thu 5, Sat 7 Nov, tablet comparison Fri 6, send photos of marked sheets (decision #12) | operator | 2026-11-08 review | `printables/skaitymo-matavimas-tevams.html` |
+| After the baseline: compute the numbers, start the daily ~7 min parent reads from Mon 2026-11-09, write week 11 texts and the next passages and lists; take `READ-1` to `READ-6` to the operator | advisor | 2026-11-08 review | `docs/briefs/READ-*.md` |
 | Decide: `line_find` for H as a reading skill? Keep 'su tėčiu' writing aids? (decision #11) | operator | next review | `docs/decisions.md` |
-| L's 1-minute read with a parent (Sat 11-07 set): operator reports words and errors | operator | 2026-11-08 review | — |
 | Calendar routine's done rule misses Eduka status `įvertinta` (new, seen on H) | advisor | next sweep | `docs/briefs/ROUTINE-calendar-eduka-done.md` |
 | H's account: Google security alert 10-29, new sign-in from an Apple iPhone: confirm it was family | operator | now | H's school mail |
 | Timetable: show a day with no set as grey 'Užduotys neparuoštos', not red 'Praleista'; morning digest warns when fewer than 2 days of sets are left | advisor → briefs | — | `h/`, `l/`, school-sync |

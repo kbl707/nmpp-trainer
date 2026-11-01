@@ -350,6 +350,8 @@ All options below run without a backend server. Effort figures are the author's.
 - Sets for 2–7 Nov were written before this file: texts of 44–49 words (this file proposes 20–40), star on the read step, syllable builds unchanged, and a Saturday read on an unseen book page rather than this file's three-passage protocol. None of it is harmful for one week.
 - Decision #11 (H) is unaffected. This file also advises against vision or motor exercises for L, but its b/d proposal keeps short handwriting in real words.
 
+**Correction, advisor 2026-11-01:** this file's rank 1 and the list above say the read step earns a star. It doesn't: `read_aloud` records `correct: null`, so its stars are 0, and no wpm is shown to the child. Brief `READ-1` covers what's actually left.
+
 **Limits to remember:** ran on Opus 5.5, not the Fable the operator asked for (rate limit). Many sources were seen as abstracts only, and only seven claims were rechecked. The routine, minutes and all effort figures are the author's proposals, not tested programmes.
 
 **Now open items:** operator decides whether to adopt the routine and run the baseline; item-type changes wait on that decision.

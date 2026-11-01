@@ -161,3 +161,31 @@ jsonb_array_elements(items) it where learner='h' and scheduled_date >=
 `line_find` as a reading skill ("rask eilutę", max 1 a day), and the "su tėčiu"
 writing aids on printables.
 Status: OPEN
+
+## #12 — L: reading plan, parent-timed baseline · 2026-11-01 · decided by operator
+Decision: adopt the plan in `docs/inbox/2026-11-01-l-reading-research.md`.
+- Speed and accuracy come only from a parent-timed read on paper, scored from a
+  private phone recording. Tablet taps are never reported as reading speed.
+- Baseline in the break: three sittings on Tue 3, Thu 5 and Sat 7 Nov, three new
+  100+ word passages each, plus word lists, with the median of each sitting as the
+  number. Sheets: `printables/skaitymo-matavimas-tevams.html` and `-vaikui.html`.
+- One read in the tablet with a parent present on Fri 6 Nov compares tap and oral
+  rates. The parent read on Sat 7 Nov is replaced by the third sitting.
+- From Mon 9 Nov: about 7 minutes a day with a parent on a new short text, up to
+  three passes. Then passages on 21 Nov, 5 Dec, 19 Dec, 2 Jan, 16 Jan and 30 Jan,
+  with list-only Saturdays between. Materials follow at weekly reviews.
+- Weekly content: "lengva" is for mood and text choice only, never to advance.
+  Syllable chunks come from the coming text. Not to build: speech recognition,
+  forced pacing, child audio upload, stricter tap gates, overlays, special fonts,
+  vision exercises.
+- Tablet changes are briefs `READ-1` to `READ-6`, one PR each, not started until the
+  advisor reviews them with the operator.
+Why: oral speed is unknown, and taps can't measure it. The plan's minutes, rules and
+Lithuanian adaptations are proposals, since no validated Lithuanian measure or
+growth data exists. The research ran on Opus 5.5, and many sources were abstracts.
+Verdict / revisit: three sittings scored by the 2026-11-08 review. About 2 Jan
+(week 8) change one thing only if the signal is obvious. About 30 Jan (week 12): under
++6 correct syllables a minute with practice actually done, check dose, text difficulty,
+passage drift and scoring first, then change the plan; +12 or more, continue. Talk to
+the teacher or school specialist any time a parent is worried: no threshold is needed.
+Status: OPEN
