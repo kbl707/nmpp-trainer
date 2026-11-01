@@ -146,3 +146,18 @@ finished tasks still showed as due. The daily sync already knows the status.
 Verdict / revisit: after one week, every event for a task Eduka marks done
 shows `DONE ✓`, and no event was changed wrongly.
 Status: OPEN
+
+## #11 — H: no eye-training items · 2026-11-01 · decided by operator
+Decision: from 2026-11-02, H's `task_sets` contain no `eye_track`, `trace`,
+`letter_hunt`, `letter_flash` or `line_find` as warm-ups, and no `pratimai`
+eye/hand sets. The renderers stay (L still uses `letter_hunt` and
+`letter_flash` for b/d). Past sets stay as history.
+Why: the operator judged these exercises pointless for H; the minutes go back
+to NMPP reading and maths.
+Verdict / revisit: this returns 0 rows: `select scheduled_date from task_sets,
+jsonb_array_elements(items) it where learner='h' and scheduled_date >=
+'2026-11-02' and it->>'type' in ('eye_track','trace','letter_hunt',
+'letter_flash','line_find');`. Revisit only if the operator asks. Open:
+`line_find` as a reading skill ("rask eilutę", max 1 a day), and the "su tėčiu"
+writing aids on printables.
+Status: OPEN

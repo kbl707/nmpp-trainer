@@ -171,6 +171,8 @@ keeps 6 s). Any item can carry `data.svg` + `data.svg_alt` (≤ 4 KB, sanitised 
 
 ### Eye / letter training item types (SPEC.md §5.4–§5.8)
 
+Not used for H since 2026-11-02 (decision #11); L still uses `letter_hunt` and `letter_flash`.
+
 Five more item types, on both learners' pages: `letter_hunt` (find every target
 letter in a grid before a countdown bar runs out), `letter_flash` (which of two
 letters flashed?), `eye_track` (follow a moving dot, tap when it turns red),

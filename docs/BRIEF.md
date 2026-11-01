@@ -59,9 +59,10 @@ Read 2026-11-01 from the live DB; "this week" = scheduled 2026-10-26 → 10-31.
 |---|---|---|
 | Sets completed | 6 / 7 (10-28 only interrupted, 4 items) | 6 / 6 (4 of them on Sun 11-01) |
 | First-attempt accuracy | 75% (was 64); quick_math 96 (was 79) | 84% (was 88); syllable_build 79, b/d flash passes 4/7 |
+| Caveat | week 9's choice/gap scores are inflated: right answer was listed first | same |
 | Reading speed (L) | — | last credible read 12 wpm (10-27, ~4 s/word). Reads since 10-24 are mostly tap-throughs (median 280–475 ms/word): their 64–153 wpm is NOT reading speed |
 | Streak · total stars | 3 · 1124 ⭐ | 22 · 496 ⭐ |
-| Runway | none from 2026-11-02 | none from 2026-11-02 |
+| Runway | to 2026-11-07 | to 2026-11-07 |
 - days to NMPP: 120 to reading (2027-03-01), 122 to maths (2027-03-03)
 - School autumn break 2026-11-02 → 11-08 (per teachers' Classroom posts).
 
@@ -82,6 +83,7 @@ Read 2026-11-01 from the live DB; "this week" = scheduled 2026-10-26 → 10-31.
 - #8 Anonymise everything public to H / L, including DB ids and git
   history (2026-10-19)
 - #9 school-sync in a private repo `kbl707/school-sync` (2026-10-19)
+- #11 H: no eye-training items from 2026-11-02 (2026-11-01)
 - #10 Calendar task events carry `eduka:<external_id>` in the description;
   a daily routine marks done ones `DONE ✓` (2026-10-25)
 
@@ -89,7 +91,10 @@ Read 2026-11-01 from the live DB; "this week" = scheduled 2026-10-26 → 10-31.
 | Item | Owner | Due | Where |
 |---|---|---|---|
 | H's YouTube: long live streams with open chat (3–6 h, Rivals/Fortnite customs) — consider YouTube supervised account / chat off | operator | — | YouTube settings |
-| `read_aloud`: tap-through isn't caught (`rushed` = under 300 ms/word average); WPM is unusable until fixed | advisor → brief | before the next read_aloud week | SPEC §13.4 |
+| L reading research running in a separate session; file with `/ledger sync` when done, then decide routine + app changes | advisor | when it reports | `docs/inbox/2026-11-01-l-reading-research.md` |
+| Decide: `line_find` for H as a reading skill? Keep 'su tėčiu' writing aids? (decision #11) | operator | next review | `docs/decisions.md` |
+| L's 1-minute read with a parent (Sat 11-07 set): operator reports words and errors | operator | 2026-11-08 review | — |
+| `read_aloud` tap-through flag: PR #2 (median under 500 ms) | advisor | on review | PR #2 |
 | Calendar routine's done rule misses Eduka status `įvertinta` (new, seen on H) | advisor | next sweep | `docs/briefs/ROUTINE-calendar-eduka-done.md` |
 | H's account: Google security alert 10-29, new sign-in from an Apple iPhone: confirm it was family | operator | now | H's school mail |
 | Timetable: show a day with no set as grey 'Užduotys neparuoštos', not red 'Praleista'; morning digest warns when fewer than 2 days of sets are left | advisor → briefs | — | `h/`, `l/`, school-sync |
