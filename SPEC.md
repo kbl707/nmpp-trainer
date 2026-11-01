@@ -838,7 +838,7 @@ self_rating, error_words }` — and, on the answer *entry* itself (alongside
 |---|---|
 | `word_times` | `[ms, …]` — time spent on each word, in text order (`word_count` entries); consecutive taps' differences, first tap → word 1 done, … → last word done |
 | `slow_words` | unique words whose time was **more than 2× the median** of this read's `word_times` — computed automatically, shown to the parent as a dotted underline, separate from the parent's `error_words` |
-| `rushed` | `true` only if the read averaged under 300 ms per word (a tap-through without reading); excluded from the weekly WPM average (§13.5) |
+| `rushed` | `true` only if the **median** word time is under 500 ms (a tap-through without reading: an average hid it, one long pause lifted the mean over the old 300 ms limit); excluded from the weekly WPM average (§13.5) |
 
 `seconds` (inside `answer`) is the reading time = `sum(word_times)` rounded to
 whole seconds — the first-tap→last-word span, distinct from the generic
@@ -849,8 +849,7 @@ including the review screen). `word_count` is the number of word tiles;
 parent-tapped words (empty array if the toggle was never used).
 
 **Tap-through guard.** `rushed` is not a lock — nothing waits or is disabled;
-it is only a data-quality flag so a child who taps straight through (a 200+
-wpm "read") doesn't pollute the weekly WPM. The parent-marked `error_words`
+it is only a data-quality flag so a child who taps straight through (a tapped-through "read") doesn't pollute the weekly WPM. The parent-marked `error_words`
 and the `slow_words` of such a read are still stored.
 
 **`word_gap`** (auto-checked, same shape/check as `choice`):

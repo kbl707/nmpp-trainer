@@ -1234,7 +1234,7 @@
     read_aloud(container, item) {
       const data = item.data || {};
       const MIN_TAP_GAP_MS = 250; // swallows an accidental double-tap
-      const RUSHED_MS_PER_WORD = 300; // tapped through without reading (stats guard)
+      const RUSHED_MEDIAN_MS = 500; // median per word: tapped through, not read aloud (stats guard)
 
       renderReading();
 
@@ -1355,7 +1355,7 @@
             if (!slowWords.includes(tile.dataset.word)) slowWords.push(tile.dataset.word);
           }
         });
-        const rushed = wordCount > 0 && totalMs / wordCount < RUSHED_MS_PER_WORD;
+        const rushed = wordCount > 0 && median(wordTimes) < RUSHED_MEDIAN_MS;
 
         container.innerHTML = `
           <div class="reading-text review"></div>
