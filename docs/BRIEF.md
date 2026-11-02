@@ -96,6 +96,7 @@ Read 2026-11-01 from the live DB; "this week" = scheduled 2026-10-26 → 10-31.
 | L's reading baseline: print sheets and the NŠA list, sitting 1 done Mon 2 Nov and scored; run Thu 5 at 17:00 (with the b/d check, not done yet), tablet comparison Fri 6 at 17:00, Sat 7 at 11:20; send photos of marked sheets (decision #12) | operator | 2026-11-08 review | `printables/skaitymo-matavimas-tevams.html` |
 | After the baseline: compute the numbers, start the daily ~7 min parent reads from Mon 2026-11-09, write week 11 texts and the next passages and lists; take `READ-1` to `READ-6` to the operator | advisor | 2026-11-08 review | `docs/briefs/READ-*.md` |
 | Print the reading sheets dated from December before 2026-12-02; check whether Eduka and Classroom still get tasks during in-person November | advisor → operator | 2026-11-08 review | decision #12 |
+| Ask the online school how and where H sits the NMPP on 2027-03-01 and 03-03 (in person in Lithuania isn't possible); until then the preparation plan stays as it is | operator | before 2026-12-02 | online school |
 | Decide: `line_find` for H as a reading skill? Keep 'su tėčiu' writing aids? (decision #11) | operator | next review | `docs/decisions.md` |
 | Calendar routine's done rule misses Eduka status `įvertinta` (new, seen on H) | advisor | next sweep | `docs/briefs/ROUTINE-calendar-eduka-done.md` |
 | H's account: Google security alert 10-29, new sign-in from an Apple iPhone: confirm it was family | operator | now | H's school mail |
