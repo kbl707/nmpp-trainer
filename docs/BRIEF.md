@@ -1,6 +1,6 @@
 # nmpp-trainer — brief
 
-As of: 2026-11-01. Rewritten in place; history lives in git.
+As of: 2026-11-02. Rewritten in place; history lives in git.
 Entry point for any chat. Read this first, then the last 7 days of
 `docs/ops-log.md`.
 
@@ -64,7 +64,7 @@ Read 2026-11-01 from the live DB; "this week" = scheduled 2026-10-26 → 10-31.
 | Streak · total stars | 3 · 1124 ⭐ | 22 · 496 ⭐ |
 | Runway | to 2026-11-07 | to 2026-11-07 |
 - days to NMPP: 120 to reading (2027-03-01), 122 to maths (2027-03-03)
-- School autumn break 2026-11-02 → 11-08 (per teachers' Classroom posts).
+- Online school's autumn break is 2026-11-02 → 11-08, but both children attend their previous in-person school through November (from 11-03), so they have no break. Back to the online school in December.
 
 ## Decisions in force
 - #1 Ledger process (2026-10-18)
@@ -93,8 +93,9 @@ Read 2026-11-01 from the live DB; "this week" = scheduled 2026-10-26 → 10-31.
 | Item | Owner | Due | Where |
 |---|---|---|---|
 | H's YouTube: long live streams with open chat (3–6 h, Rivals/Fortnite customs) — consider YouTube supervised account / chat off | operator | — | YouTube settings |
-| L's reading baseline: print sheets and the NŠA list, practise scoring, run Tue 3, Thu 5, Sat 7 Nov, tablet comparison Fri 6, send photos of marked sheets (decision #12) | operator | 2026-11-08 review | `printables/skaitymo-matavimas-tevams.html` |
+| L's reading baseline: print sheets and the NŠA list, sitting 1 done Mon 2 Nov and scored; run Thu 5 at 17:00 (with the b/d check, not done yet), tablet comparison Fri 6 at 17:00, Sat 7 at 11:20; send photos of marked sheets (decision #12) | operator | 2026-11-08 review | `printables/skaitymo-matavimas-tevams.html` |
 | After the baseline: compute the numbers, start the daily ~7 min parent reads from Mon 2026-11-09, write week 11 texts and the next passages and lists; take `READ-1` to `READ-6` to the operator | advisor | 2026-11-08 review | `docs/briefs/READ-*.md` |
+| Print the reading sheets dated from December before 2026-12-02; check whether Eduka and Classroom still get tasks during in-person November | advisor → operator | 2026-11-08 review | decision #12 |
 | Decide: `line_find` for H as a reading skill? Keep 'su tėčiu' writing aids? (decision #11) | operator | next review | `docs/decisions.md` |
 | Calendar routine's done rule misses Eduka status `įvertinta` (new, seen on H) | advisor | next sweep | `docs/briefs/ROUTINE-calendar-eduka-done.md` |
 | H's account: Google security alert 10-29, new sign-in from an Apple iPhone: confirm it was family | operator | now | H's school mail |
