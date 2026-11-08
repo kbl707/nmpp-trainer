@@ -1,6 +1,6 @@
 # nmpp-trainer — brief
 
-As of: 2026-11-02. Rewritten in place; history lives in git.
+As of: 2026-11-08. Rewritten in place; history lives in git.
 Entry point for any chat. Read this first, then the last 7 days of
 `docs/ops-log.md`.
 
@@ -54,17 +54,18 @@ All UI copy is Lithuanian; the child has a named diagnosis (SPEC §7).
   incidents and all five of its fixes are live.
 
 ## Numbers that matter
-Read 2026-11-01 from the live DB; "this week" = scheduled 2026-10-26 → 10-31.
+Read 2026-11-08 from the live DB; "this week" = scheduled 2026-11-02 → 11-07.
 | | H | L |
 |---|---|---|
-| Sets completed | 6 / 7 (10-28 only interrupted, 4 items) | 6 / 6 (4 of them on Sun 11-01) |
-| First-attempt accuracy | 75% (was 64); quick_math 96 (was 79) | 84% (was 88); syllable_build 79, b/d flash 88% correct on completed sets (the app's 90% pass mark is not accuracy) |
-| Caveat | week 9's choice/gap scores are inflated: right answer was listed first | same |
-| Reading speed (L) | — | oral speed unknown (never timed by a person); last credible tap read 12 wpm (10-27, ~4 s/word). Reads since 10-24 are mostly tap-throughs (median 280–475 ms/word): their 64–153 wpm is NOT reading speed |
-| Streak · total stars | 3 · 1124 ⭐ | 22 · 496 ⭐ |
-| Runway | to 2026-11-07 | to 2026-11-07 |
-- days to NMPP: 120 to reading (2027-03-01), 122 to maths (2027-03-03)
-- Online school's autumn break is 2026-11-02 → 11-08, but both children attend their previous in-person school through November (from 11-03), so they have no break; the trainer and L's reading sittings happen in the evenings. Online school resumes 2026-12-09; the operator will set how that works.
+| Sets completed | 7 / 7 (Sat finished Sun morning) | 5 / 6: 11-03 not done (Mon's set was replayed instead, tapped through) |
+| First-attempt accuracy | 68% (was 75); quick_math 97; choice 38% (13/21 first taps = top option) | 64% (was 84, inflated); syllable_build 65 (order errors), word_gap 50, b/d flash passes 1/5 |
+| Reading speed (L) | — | tablet reads with real effort 10, 10, 14 wpm; paper sitting 1 (Mon 2 Nov): median 12 correct words/min, 23 correct syllables/min; sittings 2 and 3 not done |
+| Friday test | 21/25 in 13.5 min, in the notebook | — |
+| Streak · total stars | 9 · 1380 ⭐ | 4 · 578 ⭐ |
+| Runway | to 2026-11-14 | to 2026-11-14 |
+- days to NMPP: 113 to reading (2027-03-01), 115 to maths (2027-03-03)
+- H gaps: x-equations (does the same operation instead of the inverse), area vs perimeter, clock time, final step of word problems.
+- School: both children attend their previous in-person school through November (its programme is the same, 2–3 units behind); the online school (the main one) resumed 2026-11-09 and runs alongside. Trainer in the evenings. The operator is agreeing a sync plan with both schools' teachers; after 2026-12-02 online school only, with no gap.
 
 ## Decisions in force
 - #1 Ledger process (2026-10-18)
@@ -93,11 +94,15 @@ Read 2026-11-01 from the live DB; "this week" = scheduled 2026-10-26 → 10-31.
 | Item | Owner | Due | Where |
 |---|---|---|---|
 | H's YouTube: long live streams with open chat (3–6 h, Rivals/Fortnite customs) — consider YouTube supervised account / chat off | operator | — | YouTube settings |
-| L's reading baseline: print sheets and the NŠA list, sitting 1 done Mon 2 Nov and scored; run Thu 5 at 17:00 (with the b/d check, not done yet), tablet comparison Fri 6 at 17:00, Sat 7 at 11:20; send photos of marked sheets (decision #12) | operator | 2026-11-08 review | `printables/skaitymo-matavimas-tevams.html` |
-| After the baseline: compute the numbers, start the daily ~7 min parent reads from Mon 2026-11-09, write week 11 texts and the next passages and lists; take `READ-1` to `READ-6` to the operator | advisor | 2026-11-08 review | `docs/briefs/READ-*.md` |
+| L's reading baseline: sitting 1 done (Mon 2 Nov, median 12 wcpm); sittings 2 and 3 moved to Sat 14 Nov 11:20 (Ž2, N1, b/d) and Sun 15 Nov 11:20 (Ž3, NŠA); reprint child pages Ž2, N1, Ž3 (arrows); send photos of all marked sheets (decision #12) | operator | 2026-11-15 review | `printables/skaitymo-matavimas-tevams.html` |
+| After the baseline: compute the numbers; the next passages and lists; take `READ-1` to `READ-6` to the operator. Daily parent read started 2026-11-09 as the tablet text read first by the parent | advisor | 2026-11-15 review | `docs/briefs/READ-*.md` |
+| H's Classroom: Unit 6 Test (since 10-09) and the dictation are still not handed in; VU check test due 11-24, Lithuanian dialogues test and craft photos due 12-01 | operator | this week | Classroom |
+| L's Eduka: „Sprendžiame uždavinius“ due 11-10 and „Atimtis iki 100“ due 11-12 not started; „augintiniai“ 0%, e/a 64% | operator | 2026-11-12 | Eduka |
+| L's school account is signed out in Chrome: her mail and Classroom were not checked on 11-08 | operator | before next review | Chrome account 1 |
+| App: a finished day can be replayed from the timetable (L did Mon's set again on Tue instead of Tue's); show 'atlikta' and open the next unfinished day instead | advisor → FIX brief | 2026-11-15 review | `app.js`, `l/index.html` |
 | Trainer has no offline mode: keep a paper set per child ready for days without internet, and keep sets running with no gap through the winter | advisor | 2026-11-29 review | `printables/` |
 | Trainer tested 2026-11-02 in a time zone far behind Vilnius (device dates, real `record_progress` and `open_chest` in a rolled-back transaction): sets and streak correct. Known and accepted: a chest opened late in the local day gives its double day two days later, and can overwrite a double day still pending | — | — | `open_chest` |
-| Print the reading sheets dated from December before 2026-12-02; check whether Eduka and Classroom still get tasks during in-person November | advisor → operator | 2026-11-08 review | decision #12 |
+| Print L's reading sheets for December and January before 2026-12-02 | advisor → operator | 2026-11-29 review | decision #12 |
 | Confirm with the online school that H sits the NMPP remotely on 2027-03-01 and 03-03 (expected), and the start time; the preparation plan stays as it is | operator | before 2026-12-02 | online school |
 | Decide: `line_find` for H as a reading skill? Keep 'su tėčiu' writing aids? (decision #11) | operator | next review | `docs/decisions.md` |
 | Calendar routine's done rule misses Eduka status `įvertinta` (new, seen on H) | advisor | next sweep | `docs/briefs/ROUTINE-calendar-eduka-done.md` |
