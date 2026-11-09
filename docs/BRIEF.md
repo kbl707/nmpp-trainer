@@ -65,7 +65,7 @@ Read 2026-11-08 from the live DB; "this week" = scheduled 2026-11-02 → 11-07.
 | Runway | to 2026-11-14 | to 2026-11-14 |
 - days to NMPP: 113 to reading (2027-03-01), 115 to maths (2027-03-03)
 - H gaps: x-equations (does the same operation instead of the inverse), area vs perimeter, clock time, final step of word problems.
-- School: both children attend their previous in-person school through November (its programme is the same, 2–3 units behind); the online school (the main one) resumed 2026-11-09 and runs alongside. Trainer in the evenings. The operator is agreeing a sync plan with both schools' teachers; after 2026-12-02 online school only, with no gap.
+- School: both children attend their previous in-person school through November (its programme is the same, 2–3 units behind); the online school (the main one) resumed 2026-11-09 and runs alongside. Trainer in the evenings. The in-person school's teachers agreed to give the children time for online-school tasks; the advisor prepares the weekly list; after 2026-12-02 online school only, with no gap.
 
 ## Decisions in force
 - #1 Ledger process (2026-10-18)
@@ -98,6 +98,8 @@ Read 2026-11-08 from the live DB; "this week" = scheduled 2026-11-02 → 11-07.
 | After the baseline: compute the numbers; the next passages and lists; take `READ-1` to `READ-6` to the operator. Daily parent read started 2026-11-09 as the tablet text read first by the parent | advisor | 2026-11-15 review | `docs/briefs/READ-*.md` |
 | H's Classroom: Unit 6 Test (since 10-09) and the dictation are still not handed in; VU check test due 11-24, Lithuanian dialogues test and craft photos due 12-01 | operator | this week | Classroom |
 | L's Eduka: „Sprendžiame uždavinius“ due 11-10 and „Atimtis iki 100“ due 11-12 not started; „augintiniai“ 0%, e/a 64% | operator | 2026-11-12 | Eduka |
+| L's Classroom new 11-09: English „Workbook praktinės užduotys“ due 11-20; Lithuanian „Gyvūno aprašymas“ due 12-09; H's Eduka maths „Sprendžiame uždavinius“ and „Ar jau moku?“ posted 11-09 | operator / in-person school | 11-20 | Classroom, Eduka |
+| Daily mail and Classroom check runs as scheduled task `kids-school-mail-daily` (Mon–Sat 18:00, until 2026-12-01); a weekly list of the online school's Lithuanian, maths and English tasks goes to the in-person school's teachers, who agreed to help | advisor | until 2026-12-01 | scheduled task, scratchpad `nuotolines-mokyklos-savaite-*.md` |
 | L's Classroom: project „Kur aš gyvenu? Mano gyvenamoji vietovė“ (Visuomeninis ugdymas) is overdue since 11-07 and needs a presentation (slides, drawing, photos or video, any form); „Bailusis Liūtas“ reading still open, no deadline. Fizinis test 1 and the Sep–Oct craft photos for Dailė and Technologijos are handed in | operator | this week | Classroom |
 | App: a finished day can be replayed from the timetable (L did Mon's set again on Tue instead of Tue's); show 'atlikta' and open the next unfinished day instead | advisor → FIX brief | 2026-11-15 review | `app.js`, `l/index.html` |
 | Trainer has no offline mode: keep a paper set per child ready for days without internet, and keep sets running with no gap through the winter | advisor | 2026-11-29 review | `printables/` |
