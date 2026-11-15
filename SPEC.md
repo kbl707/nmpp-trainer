@@ -343,7 +343,14 @@ Single-family app, no auth, but the anon key is public in the page source:
 - A visible but calm elapsed-time indicator (no countdown pressure), used to
   fill `duration_seconds` and per-item `seconds`.
 - End screen: star + „Šiandien — atlikta!“ + correct count for auto-checked
-  items. No red X-marks during solving; a wrong auto-checked answer follows
+  items. On a day with more than one set it says „{Dalykas} — atlikta!“ and
+  shows „Dar liko:“ with a button per unfinished set (server `week_status`,
+  falling back to this device's saved sets offline); „Šiandien — atlikta!“
+  only once none is left. The end screen appears only after the `results`
+  row is saved: a failed save shows „Atsakymai dar neišsaugoti.“ with
+  „Bandyti dar kartą“, keeps the row in localStorage (`nmpp:unsaved:{learner}:{set}`)
+  and retries on the button, on reconnect and on the next page load
+  (`NMPPGames.flushPending`), then calls `record_progress`. No red X-marks during solving; a wrong auto-checked answer follows
   the anti-guessing retry flow (§7.3) — up to 4 attempts before the answer
   is ever shown, then move on and record as incorrect.
 - Responsive: must work on a tablet and a laptop.
