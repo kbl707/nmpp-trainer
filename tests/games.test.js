@@ -100,3 +100,32 @@ test("flushAbandoned: empty or unparsable copies are dropped without an insert",
   assert.strictEqual(calls, 0);
   assert.ok(!st.has("p:a") && !st.has("p:b"));
 });
+
+test("flushPending: saves stored rows, keeps them when the insert fails, drops junk", async () => {
+  const row = JSON.stringify({ task_set_id: "s1", answers: [], interrupted: false });
+  for (const [label, insert, kept, saved] of [
+    ["error result", async () => ({ error: { message: "offline" } }), true, []],
+    ["thrown", async () => { throw new Error("offline"); }, true, []],
+    ["success", async () => ({ error: null }), false, ["s1"]],
+  ]) {
+    const st = fakeStorage({ "u:s1": row, "u:bad": "{bad", "u:empty": "{}", "other": "x" });
+    const got = await G.flushPending(st, "u:", insert);
+    assert.deepStrictEqual(plain(got), saved, label);
+    assert.strictEqual(st.has("u:s1"), kept, label);
+    assert.ok(!st.has("u:bad") && !st.has("u:empty"), label + ": junk dropped");
+    assert.ok(st.has("other"), label + ": other keys untouched");
+  }
+});
+
+test("remainingSets: offers the day's other sets until the server says none are left", () => {
+  const day = [{ id: "lt" }, { id: "mat" }];
+  const ids = (xs) => plain(xs.map((t) => t.id));
+  assert.deepStrictEqual(ids(G.remainingSets(day, "lt", 1, new Set())), ["mat"]);
+  assert.deepStrictEqual(ids(G.remainingSets(day, "lt", 0, new Set())), []);
+  // offline: trust this device's record
+  assert.deepStrictEqual(ids(G.remainingSets(day, "lt", null, new Set())), ["mat"]);
+  assert.deepStrictEqual(ids(G.remainingSets(day, "lt", null, new Set(["mat"]))), []);
+  // server says one is left but this device thinks it's done: offer it anyway
+  assert.deepStrictEqual(ids(G.remainingSets(day, "lt", 1, new Set(["mat"]))), ["mat"]);
+  assert.deepStrictEqual(ids(G.remainingSets([{ id: "lt" }], "lt", null, new Set())), []);
+});

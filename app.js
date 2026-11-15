@@ -38,6 +38,10 @@
   })();
 
   const PROGRESS_PREFIX = `nmpp:progress:${LEARNER}:`;
+  // A finished set's `results` row, kept until the server has it (§7: save).
+  const UNSAVED_PREFIX = `nmpp:unsaved:${LEARNER}:`;
+  // Sets this device saved, so a two-subject day can offer the other one.
+  const DONE_PREFIX = `nmpp:done:${LEARNER}:`;
   const SUBJECT_LABELS = { matematika: "Matematika", lietuviu: "Lietuvių kalba", pratimai: "Pratimai" };
   const PRAISE_WORDS = ["Puiku!", "Taip!", "Šaunu!", "Tiksliai!"];
   const SOUND_KEY = `nmpp:sound-on:${LEARNER}`;
@@ -444,7 +448,77 @@
     );
   }
 
+  // ---- saving a finished set ---------------------------------------------
+
+  async function insertResult(row) {
+    try {
+      const { error } = await client.from("results").insert(row);
+      return !error;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function keepUnsaved(row) {
+    try {
+      localStorage.setItem(UNSAVED_PREFIX + row.task_set_id, JSON.stringify(row));
+    } catch (e) {}
+  }
+
+  function markSaved(taskSetId) {
+    try {
+      localStorage.removeItem(UNSAVED_PREFIX + taskSetId);
+      localStorage.setItem(DONE_PREFIX + taskSetId, "1");
+    } catch (e) {}
+  }
+
+  function doneLocally() {
+    const ids = new Set();
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.indexOf(DONE_PREFIX) === 0) ids.add(k.slice(DONE_PREFIX.length));
+      }
+    } catch (e) {}
+    return ids;
+  }
+
+  // Finished sets whose save failed earlier (offline, closed tab): save them
+  // now, then credit stars/streak. The server guards double-crediting.
+  async function flushUnsavedResults() {
+    let saved = [];
+    try {
+      saved = await window.NMPPGames.flushPending(localStorage, UNSAVED_PREFIX, (row) =>
+        client.from("results").insert(row)
+      );
+    } catch (e) {
+      return;
+    }
+    for (const id of saved) {
+      markSaved(id);
+      try {
+        const { data, error } = await client.rpc("record_progress", { p_set_id: id });
+        const reward = Array.isArray(data) ? data[0] : data;
+        if (!error && reward && reward.chest_ready) rememberChest(id); // init's chest block shows it
+      } catch (e) {}
+    }
+  }
+
+  // A finished set of this day that is still unsaved after the flush: show its
+  // retry screen instead of starting the set again (the answers are kept).
+  function unsavedRowFor(taskSets) {
+    for (const ts of taskSets) {
+      try {
+        const raw = localStorage.getItem(UNSAVED_PREFIX + ts.id);
+        if (raw) return { taskSet: ts, row: JSON.parse(raw) };
+      } catch (e) {}
+    }
+    return null;
+  }
+
   // ---- app state ----------------------------------------------------------
+
+  let dayTaskSets = []; // all of the loaded day's sets (subject picker, "Dar liko")
 
   let session = null; // { taskSet, index, answers, sessionStartMs, itemStartMs, attempts }
 
@@ -2221,25 +2295,63 @@
     const total_autochecked = session.answers.filter((a) => a.correct !== null).length;
     const setStars = session.answers.reduce((sum, a) => sum + (a.stars || 0), 0);
 
-    try {
-      await client.from("results").insert({
-        task_set_id: session.taskSet.id,
-        answers: session.answers,
-        correct_count,
-        total_autochecked,
-        duration_seconds,
-        interrupted: false,
-        learner: LEARNER,
-      });
-    } catch (e) {
-      /* even if the write fails, still show the finish screen locally */
-    }
+    const row = {
+      task_set_id: session.taskSet.id,
+      answers: session.answers,
+      correct_count,
+      total_autochecked,
+      duration_seconds,
+      interrupted: false,
+      learner: LEARNER,
+    };
+    // The answers stay on this device until the server has them: a failed
+    // save says so and retries (button, reconnect, next page load). Never
+    // show "atlikta" for work that was not saved.
+    keepUnsaved(row);
     clearProgress(session.taskSet.id);
+    if (!(await insertResult(row))) {
+      renderSaveFailed(row, setStars);
+      return;
+    }
+    markSaved(row.task_set_id);
+    await finishSaved(correct_count, total_autochecked, setStars);
+  }
 
+  function renderSaveFailed(row, setStars) {
+    topbarEl.hidden = true;
+    screenEl.innerHTML = `
+      <div class="card">
+        <p class="prompt">Atsakymai dar neišsaugoti.</p>
+        <p class="instruction">Patikrink internetą ir paspausk „Bandyti dar kartą“. Atsakymai saugomi šiame įrenginyje, niekas nedingo.</p>
+        <button type="button" class="btn" data-primary data-action="retry-save">Bandyti dar kartą</button>
+      </div>
+    `;
+    const btn = screenEl.querySelector('[data-action="retry-save"]');
+    let busy = false;
+    const retry = async () => {
+      if (busy || !btn.isConnected) return;
+      busy = true;
+      btn.disabled = true;
+      btn.textContent = "Saugoma…";
+      if (await insertResult(row)) {
+        window.removeEventListener("online", retry);
+        markSaved(row.task_set_id);
+        await finishSaved(row.correct_count, row.total_autochecked, setStars);
+        return;
+      }
+      busy = false;
+      btn.disabled = false;
+      btn.textContent = "Bandyti dar kartą";
+    };
+    btn.addEventListener("click", retry);
+    window.addEventListener("online", retry);
+  }
+
+  async function finishSaved(correct_count, total_autochecked, setStars) {
     // Both are bonuses: a failure in either must never block the finish
     // screen. They run in parallel; the results row is already saved.
     const onSaturday = isSaturday(session.taskSet.scheduled_date);
-    let [reward, weekly] = await Promise.all([
+    let [reward, weekly, dayLeft] = await Promise.all([
       (async () => {
         try {
           // The server recomputes everything from the saved results row.
@@ -2262,7 +2374,20 @@
           return null;
         }
       })(),
+      (async () => {
+        // How many of this day's sets are still unfinished (null = unknown).
+        if (dayTaskSets.length < 2) return 0;
+        try {
+          const { data, error } = await client.rpc("week_status", { p_learner: LEARNER });
+          if (error) throw error;
+          const day = (data || []).find((d) => d.date === session.taskSet.scheduled_date);
+          return day ? Math.max(0, day.total - day.done) : null;
+        } catch (e) {
+          return null;
+        }
+      })(),
     ]);
+    const leftSets = window.NMPPGames.remainingSets(dayTaskSets, session.taskSet.id, dayLeft, doneLocally());
 
     // One chest per completed set, shown before the stats. The server rolled
     // it already (chest_ready); a failed/skipped open just leaves it unopened.
@@ -2287,7 +2412,7 @@
     screenEl.innerHTML = `
       <div class="end-screen">
         <div class="star" aria-hidden="true">${AVATAR}</div>
-        <p class="end-title">Šiandien — atlikta!</p>
+        <p class="end-title">${leftSets.length > 0 ? `${escapeHtml(SUBJECT_LABELS[session.taskSet.subject] || session.taskSet.subject)} — atlikta!` : "Šiandien — atlikta!"}</p>
         <p class="end-score">Teisingai: ${correct_count} iš ${total_autochecked}</p>
         <p class="end-stars">${isReplay ? "⭐ Šio rinkinio žvaigždutės jau įskaitytos" : `⭐ +${shownStars}${reward && reward.doubled ? " · Dviguba diena ×2" : ""}`}</p>
         ${chest ? `<p class="end-chest">🎁 Skrynia: ${escapeHtml(chestRewardText(chest))}</p>` : ""}
@@ -2298,6 +2423,20 @@
     topbarEl.hidden = true;
 
     const endScreen = screenEl.querySelector(".end-screen");
+    if (leftSets.length > 0) {
+      // Two-subject day: the day is not done until the other set is.
+      const next = el(`<div class="next-subject"><p class="end-next">Dar liko:</p></div>`);
+      leftSets.forEach((ts) => {
+        const label = SUBJECT_LABELS[ts.subject] || ts.subject;
+        // No data-primary: a second Enter after the last item must not skip
+        // the end screen and start the next set.
+        const btn = el(`<button type="button" class="btn">${escapeHtml(label)} →</button>`);
+        btn.addEventListener("click", () => beginSession(ts));
+        next.appendChild(btn);
+      });
+      const starsLine = endScreen.querySelector(".end-stars");
+      endScreen.insertBefore(next, starsLine ? starsLine.nextSibling : null);
+    }
     if (shownStars > 0 && !isReplay) renderConfetti(endScreen);
     // The chest already chimed when it opened.
     if (!chest) playChime();
@@ -2408,6 +2547,23 @@
       return;
     }
 
+    dayTaskSets = taskSets;
+    await flushUnsavedResults();
+    const unsaved = unsavedRowFor(taskSets);
+    if (unsaved) {
+      const { taskSet, row } = unsaved;
+      session = {
+        taskSet,
+        index: taskSet.items.length,
+        answers: row.answers || [],
+        sessionStartMs: Date.now() - (row.duration_seconds || 0) * 1000,
+        itemStartMs: Date.now(),
+        attempt: 0,
+        submitting: true,
+      };
+      renderSaveFailed(row, session.answers.reduce((sum, a) => sum + (a.stars || 0), 0));
+      return;
+    }
     if (!catchUp) await flushAbandonedSessions(new Set(taskSets.map((t) => t.id)));
 
     // A chest that was rolled but not opened yet (reload on the chest screen):

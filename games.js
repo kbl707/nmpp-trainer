@@ -217,8 +217,60 @@
     }
   }
 
+  // Retry finished sets whose save failed. Each stored value is the complete
+  // `results` row. A copy is deleted only after its insert succeeded (same
+  // contract as flushAbandoned); unparsable copies are dropped. Resolves to
+  // the task_set ids that were saved.
+  async function flushPending(storage, prefix, insert) {
+    var keys = [];
+    for (var i = 0; i < storage.length; i++) {
+      var k = storage.key(i);
+      if (k && k.indexOf(prefix) === 0) keys.push(k);
+    }
+    var saved = [];
+    for (var j = 0; j < keys.length; j++) {
+      var row;
+      try {
+        row = JSON.parse(storage.getItem(keys[j]));
+      } catch (e) {
+        storage.removeItem(keys[j]);
+        continue;
+      }
+      if (!row || !row.task_set_id) {
+        storage.removeItem(keys[j]);
+        continue;
+      }
+      var ok = false;
+      try {
+        var res = await insert(row);
+        ok = !(res && res.error);
+      } catch (e) {
+        ok = false;
+      }
+      if (!ok) continue;
+      storage.removeItem(keys[j]);
+      saved.push(row.task_set_id);
+    }
+    return saved;
+  }
+
+  // Which of the day's other sets to offer after one is finished. `left` is
+  // the server's count of the day's unfinished sets (null when unknown);
+  // `doneLocally` holds ids this device has saved. Server says none left →
+  // nothing; otherwise prefer sets not done on this device, falling back to
+  // all others (they may have been done elsewhere — a replay earns no stars).
+  function remainingSets(daySets, currentId, left, doneLocally) {
+    var others = daySets.filter(function (t) { return t.id !== currentId; });
+    if (left === 0) return [];
+    var fresh = others.filter(function (t) { return !doneLocally.has(t.id); });
+    if (left === null || left === undefined) return fresh;
+    return fresh.length > 0 ? fresh : others;
+  }
+
   global.NMPPGames = {
     flushAbandoned: flushAbandoned,
+    flushPending: flushPending,
+    remainingSets: remainingSets,
     W: W, H: H,
     buildPath: buildPath, positionAt: positionAt, project: project,
     pickChangeTimes: pickChangeTimes, scoreEyeTrack: scoreEyeTrack,
