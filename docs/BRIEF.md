@@ -62,7 +62,7 @@ Read 2026-11-15 from the live DB; "this week" = scheduled 2026-11-09 → 11-14.
 | Reading speed (L) | — | paper sittings 2 and 3 (14 and 15 Nov): photos not received yet; tablet not reported (decision #12) |
 | Friday test | 27/28 in 8.4 min | — |
 | Streak · total stars | 15 · 1657 ⭐ | 1 · 670 ⭐ (reset by the lost saves) |
-| Runway | **to 2026-11-14: no sets from 11-16** | **to 2026-11-14: no sets from 11-16** |
+| Runway | to 2026-11-21 | to 2026-11-21 |
 - days to NMPP: 106 to reading (2027-03-01), 108 to maths (2027-03-03)
 - H gaps: clock time (durations across the hour, writes times as decimals); final step of word problems (answers the middle result); two-digit mental subtraction slips by 1 or 10 inside equations; Eduka side-from-area 70%. Equations: the method holds since the ladder.
 - School: both children attend their previous in-person school through November (its programme is the same, 2–3 units behind); the online school (the main one) resumed 2026-11-09 and runs alongside. Trainer in the evenings. The in-person school's teachers agreed to give the children time for online-school tasks; the advisor prepares the weekly list; after 2026-12-02 online school only, with no gap.
