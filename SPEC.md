@@ -350,7 +350,9 @@ Single-family app, no auth, but the anon key is public in the page source:
   row is saved: a failed save shows „Atsakymai dar neišsaugoti.“ with
   „Bandyti dar kartą“, keeps the row in localStorage (`nmpp:unsaved:{learner}:{set}`)
   and retries on the button, on reconnect and on the next page load
-  (`NMPPGames.flushPending`), then calls `record_progress`. No red X-marks during solving; a wrong auto-checked answer follows
+  (`NMPPGames.flushPending`), then calls `record_progress` (a chest it rolls
+  is shown by the pending-chest path). A reload while the row is still
+  unsaved reopens the retry screen; the set is never restarted over it. No red X-marks during solving; a wrong auto-checked answer follows
   the anti-guessing retry flow (§7.3) — up to 4 attempts before the answer
   is ever shown, then move on and record as incorrect.
 - Responsive: must work on a tablet and a laptop.

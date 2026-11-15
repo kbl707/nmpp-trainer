@@ -497,9 +497,23 @@
     for (const id of saved) {
       markSaved(id);
       try {
-        await client.rpc("record_progress", { p_set_id: id });
+        const { data, error } = await client.rpc("record_progress", { p_set_id: id });
+        const reward = Array.isArray(data) ? data[0] : data;
+        if (!error && reward && reward.chest_ready) rememberChest(id); // init's chest block shows it
       } catch (e) {}
     }
+  }
+
+  // A finished set of this day that is still unsaved after the flush: show its
+  // retry screen instead of starting the set again (the answers are kept).
+  function unsavedRowFor(taskSets) {
+    for (const ts of taskSets) {
+      try {
+        const raw = localStorage.getItem(UNSAVED_PREFIX + ts.id);
+        if (raw) return { taskSet: ts, row: JSON.parse(raw) };
+      } catch (e) {}
+    }
+    return null;
   }
 
   // ---- app state ----------------------------------------------------------
@@ -2414,11 +2428,14 @@
       const next = el(`<div class="next-subject"><p class="end-next">Dar liko:</p></div>`);
       leftSets.forEach((ts) => {
         const label = SUBJECT_LABELS[ts.subject] || ts.subject;
-        const btn = el(`<button type="button" class="btn" data-primary>${escapeHtml(label)} →</button>`);
+        // No data-primary: a second Enter after the last item must not skip
+        // the end screen and start the next set.
+        const btn = el(`<button type="button" class="btn">${escapeHtml(label)} →</button>`);
         btn.addEventListener("click", () => beginSession(ts));
         next.appendChild(btn);
       });
-      endScreen.insertBefore(next, endScreen.children[1] || null);
+      const starsLine = endScreen.querySelector(".end-stars");
+      endScreen.insertBefore(next, starsLine ? starsLine.nextSibling : null);
     }
     if (shownStars > 0 && !isReplay) renderConfetti(endScreen);
     // The chest already chimed when it opened.
@@ -2532,6 +2549,21 @@
 
     dayTaskSets = taskSets;
     await flushUnsavedResults();
+    const unsaved = unsavedRowFor(taskSets);
+    if (unsaved) {
+      const { taskSet, row } = unsaved;
+      session = {
+        taskSet,
+        index: taskSet.items.length,
+        answers: row.answers || [],
+        sessionStartMs: Date.now() - (row.duration_seconds || 0) * 1000,
+        itemStartMs: Date.now(),
+        attempt: 0,
+        submitting: true,
+      };
+      renderSaveFailed(row, session.answers.reduce((sum, a) => sum + (a.stars || 0), 0));
+      return;
+    }
     if (!catchUp) await flushAbandonedSessions(new Set(taskSets.map((t) => t.id)));
 
     // A chest that was rolled but not opened yet (reload on the chest screen):
