@@ -1,6 +1,6 @@
 # nmpp-trainer — brief
 
-As of: 2026-11-08. Rewritten in place; history lives in git.
+As of: 2026-11-15. Rewritten in place; history lives in git.
 Entry point for any chat. Read this first, then the last 7 days of
 `docs/ops-log.md`.
 
@@ -54,17 +54,17 @@ All UI copy is Lithuanian; the child has a named diagnosis (SPEC §7).
   incidents and all five of its fixes are live.
 
 ## Numbers that matter
-Read 2026-11-08 from the live DB; "this week" = scheduled 2026-11-02 → 11-07.
+Read 2026-11-15 from the live DB; "this week" = scheduled 2026-11-09 → 11-14.
 | | H | L |
 |---|---|---|
-| Sets completed | 7 / 7 (Sat finished Sun morning) | 5 / 6: 11-03 not done (Mon's set was replayed instead, tapped through) |
-| First-attempt accuracy | 68% (was 75); quick_math 97; choice 38% (13/21 first taps = top option) | 64% (was 84, inflated); syllable_build 65 (order errors), word_gap 50, b/d flash passes 1/5 |
-| Reading speed (L) | — | tablet reads with real effort 10, 10, 14 wpm; paper sitting 1 (Mon 2 Nov): median 12 correct words/min, 23 correct syllables/min; sittings 2 and 3 not done |
-| Friday test | 21/25 in 13.5 min, in the notebook | — |
-| Streak · total stars | 9 · 1380 ⭐ | 4 · 578 ⭐ |
-| Runway | to 2026-11-14 | to 2026-11-14 |
-- days to NMPP: 113 to reading (2027-03-01), 115 to maths (2027-03-03)
-- H gaps: x-equations (does the same operation instead of the inverse), area vs perimeter, clock time, final step of word problems.
+| Sets completed | 7 / 7 (Fri test done Sat, Sat set Sun morning) | 5 / 10 saved: Thu and Fri none, Wed and Sat maths missing (save bug, fixed c1b5ff3); Wed Lithuanian and maths redone Sun |
+| First-attempt accuracy | 83% (was 68); quick_math 27/27; choice 80% (was 38); equations after the ladder 30/36, Sat 8/8; clock time 6/11; perimeter 3/5 | 80% (was 64); syllable_build 14/16 (was 65%); word_gap 7/8; b/d flash 28/32 trials (misses on slow trials); maths 3/5, 43 − 26 → 23 |
+| Reading speed (L) | — | paper sittings 2 and 3 (14 and 15 Nov): photos not received yet; tablet not reported (decision #12) |
+| Friday test | 27/28 in 8.4 min | — |
+| Streak · total stars | 15 · 1657 ⭐ | 1 · 670 ⭐ (reset by the lost saves) |
+| Runway | **to 2026-11-14: no sets from 11-16** | **to 2026-11-14: no sets from 11-16** |
+- days to NMPP: 106 to reading (2027-03-01), 108 to maths (2027-03-03)
+- H gaps: clock time (durations across the hour, writes times as decimals); final step of word problems (answers the middle result); two-digit mental subtraction slips by 1 or 10 inside equations; Eduka side-from-area 70%. Equations: the method holds since the ladder.
 - School: both children attend their previous in-person school through November (its programme is the same, 2–3 units behind); the online school (the main one) resumed 2026-11-09 and runs alongside. Trainer in the evenings. The in-person school's teachers agreed to give the children time for online-school tasks; the advisor prepares the weekly list; after 2026-12-02 online school only, with no gap.
 
 ## Decisions in force
