@@ -55,6 +55,9 @@ main{padding:14px 16px}
 .item.nmpp.done .tag{background:#2e7d32}
 .item.done .time small,.item.done .name small,.item.missed .time small,.item.missed .name small{color:#4b5563}
 .result{margin-top:8px;font-size:17px;font-weight:700;color:#2e7d32}
+.subs{margin-top:8px;display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+.item.nmpp .subs a{margin-top:0}
+.sub-done{font-size:16px;font-weight:700;color:#2e7d32;background:#eaf6eb;border:1.5px solid #2e7d32;padding:5px 12px;border-radius:4px}
 </style>
 </head>
 <body>
@@ -105,6 +108,7 @@ show(jsToday<DAYS.length?jsToday:0);
   const cfg=window.NMPP_CONFIG;if(!cfg)return;
   const todayIso=dayDate(jsToday);
   const LABEL={done:'✓ Atlikta',missed:'Praleista',part:'Nebaigta'},MARK={done:'✓',missed:'✗',part:'◐'};
+  const SUBJ={lietuviu:'Lietuvių k.',matematika:'Matematika'};
   fetch(cfg.SUPABASE_URL+'/rest/v1/rpc/week_status',{method:'POST',headers:{apikey:cfg.SUPABASE_ANON_KEY,Authorization:'Bearer '+cfg.SUPABASE_ANON_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_learner:'h'})})
     .then(r=>{if(!r.ok)throw 0;return r.json();}).then(rows=>{
       const byDate={};(rows||[]).forEach(r=>{byDate[r.date]=r;});
@@ -115,20 +119,34 @@ show(jsToday<DAYS.length?jsToday:0);
         // today's unfinished set isn't "missed" yet, so it gets no mark; a past
         // timetable task with no set at all can't have been done, so it is missed
         const st=r&&r.done>=r.total?'done':(date<todayIso?(r&&r.done>0?'part':'missed'):null);
-        if(!st)return;
-        const mark=document.createElement('span');mark.className='st st-'+st;mark.textContent=MARK[st];mark.title=LABEL[st];tabs.children[i].appendChild(mark);
+        if(st){const mark=document.createElement('span');mark.className='st st-'+st;mark.textContent=MARK[st];mark.title=LABEL[st];tabs.children[i].appendChild(mark);}
+        const subs=(r&&r.subjects)||[],nDone=subs.filter(s=>s.done).length;
         links.forEach(a=>{
           const item=a.closest('.item'),tag=item.querySelector('.tag');if(!tag)return;
-          const chip=document.createElement('span');chip.className='chip chip-'+st;chip.textContent=LABEL[st];tag.insertAdjacentElement('afterend',chip);
+          // two-subject day: "1 iš 2" as soon as one is done, today included
+          const multi=subs.length>1,cs=st||(multi&&nDone>0?'part':null);
+          if(cs){const chip=document.createElement('span');chip.className='chip chip-'+cs;chip.textContent=multi&&cs==='part'?'Atlikta '+nDone+' iš '+subs.length:LABEL[cs];tag.insertAdjacentElement('afterend',chip);}
           if(st==='done'||st==='missed')item.classList.add(st);
-          if(st==='done'){
+          const prev=a.previousSibling;
+          if(multi){
+            // one line per subject: done ones in green with their score,
+            // the rest a button that opens that subject directly
+            if(prev&&prev.nodeName==='BR')prev.remove();
+            const box=document.createElement('div');box.className='subs';
+            subs.forEach(s=>{
+              const name=SUBJ[s.subject]||s.subject;
+              if(s.done){const d=document.createElement('div');d.className='sub-done';d.textContent='✓ '+name+(s.scored>0?' — '+s.correct+'/'+s.scored:'');box.appendChild(d);}
+              else{const go=document.createElement('a');go.href=LINK+'?date='+date+'&subject='+encodeURIComponent(s.subject);go.target='_blank';go.rel='noopener';go.textContent=name+' →';box.appendChild(go);}
+            });
+            a.replaceWith(box);
+          }else if(st==='done'){
             // finished: green card, and the result instead of the "open" button
-            const prev=a.previousSibling;if(prev&&prev.nodeName==='BR')prev.remove();
+            if(prev&&prev.nodeName==='BR')prev.remove();
             if(r.scored>0){const res=document.createElement('div');res.className='result';res.textContent='Rezultatas: '+r.correct+'/'+r.scored;a.replaceWith(res);}
             else a.remove();
           }else if(!r){
             // nothing to open: there is no set for that day
-            const prev=a.previousSibling;if(prev&&prev.nodeName==='BR')prev.remove();
+            if(prev&&prev.nodeName==='BR')prev.remove();
             a.remove();
           }
         });
