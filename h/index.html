@@ -144,8 +144,8 @@ show(jsToday<DAYS.length?jsToday:0);
             if(prev&&prev.nodeName==='BR')prev.remove();
             if(r.scored>0){const res=document.createElement('div');res.className='result';res.textContent='Rezultatas: '+r.correct+'/'+r.scored;a.replaceWith(res);}
             else a.remove();
-          }else if(!r){
-            // nothing to open: there is no set for that day
+          }else if(!r&&st==='missed'){
+            // nothing to open: a past day with no set (today/future keep the link)
             if(prev&&prev.nodeName==='BR')prev.remove();
             a.remove();
           }
