@@ -2595,7 +2595,11 @@
     } else if (taskSets.length === 1) {
       beginSession(taskSets[0]);
     } else {
-      renderSubjectPicker(taskSets);
+      // ?subject= (the timetable's per-subject button) skips the picker.
+      const wantedSubject = new URLSearchParams(location.search).get("subject");
+      const direct = wantedSubject && taskSets.find((t) => t.subject === wantedSubject);
+      if (direct) beginSession(direct);
+      else renderSubjectPicker(taskSets);
     }
   }
 

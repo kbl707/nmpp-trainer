@@ -527,7 +527,7 @@ grant execute on function weekly_stats(text) to anon;
 
 -- week_status(learner): per-day set counts and scores for the timetable pages
 -- (/h, /l), which have no results access. Aggregates only — {date,total,done,
--- correct,scored} for the learner's sets from 14 days back to tomorrow; `done` =
+-- correct,scored,subjects[{subject,done,correct,scored}]} for the learner's sets from 14 days back to tomorrow; `done` =
 -- sets with a non-interrupted result, `correct`/`scored` = correct_count /
 -- total_autochecked of each set's FIRST completed result (so a replay can't
 -- change the shown score). Whether a not-done past day is "missed" is decided
@@ -539,16 +539,12 @@ stable
 security definer
 set search_path = public
 as $$
-  with today as (select (now() at time zone 'Europe/Vilnius')::date as d)
-  select coalesce(jsonb_agg(jsonb_build_object(
-      'date', s.scheduled_date, 'total', s.total, 'done', s.done,
-      'correct', s.correct, 'scored', s.scored) order by s.scheduled_date), '[]'::jsonb)
-  from (
-    select t.scheduled_date,
-      count(*)::int as total,
-      (count(r.id))::int as done,
-      coalesce(sum(r.correct_count), 0)::int as correct,
-      coalesce(sum(r.total_autochecked), 0)::int as scored
+  with today as (select (now() at time zone 'Europe/Vilnius')::date as d),
+  per_set as (
+    select t.scheduled_date, t.subject,
+      (r.id is not null) as done,
+      coalesce(r.correct_count, 0) as correct,
+      coalesce(r.total_autochecked, 0) as scored
     from task_sets t
     cross join today
     left join lateral (
@@ -560,7 +556,21 @@ as $$
     ) r on true
     where t.learner = p_learner
       and t.scheduled_date between today.d - 14 and today.d + 1
-    group by t.scheduled_date
+  )
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'date', s.scheduled_date, 'total', s.total, 'done', s.done,
+      'correct', s.correct, 'scored', s.scored, 'subjects', s.subjects)
+      order by s.scheduled_date), '[]'::jsonb)
+  from (
+    select scheduled_date,
+      count(*)::int as total,
+      (count(*) filter (where done))::int as done,
+      sum(correct)::int as correct,
+      sum(scored)::int as scored,
+      jsonb_agg(jsonb_build_object('subject', subject, 'done', done,
+        'correct', correct, 'scored', scored) order by subject) as subjects
+    from per_set
+    group by scheduled_date
   ) s;
 $$;
 

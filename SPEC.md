@@ -604,7 +604,7 @@ rewarded set gives nothing.
 trainer set was done: a mark on the day tab (✓ / ✗ / ◐) and a chip next to the
 NMPP tag on the task card („✓ Atlikta“, „Praleista“, „Nebaigta“) — never colour
 alone. The pages have no results access, so they call the read-only
-`week_status(learner)` RPC, which returns only `{date,total,done,correct,scored}`
+`week_status(learner)` RPC, which returns only `{date,total,done,correct,scored,subjects}`
 per day (14 days back to tomorrow; `done` = sets with a non-interrupted result,
 `correct`/`scored` = `correct_count`/`total_autochecked` of each set's first
 completed result).
@@ -621,6 +621,14 @@ A **done** card turns light green with a green NMPP tag, and the „Atidaryti
 užduotis →“ button is replaced by „Rezultatas: 15/16“ (omitted for sets with
 nothing auto-checked, e.g. a printable — the card is just green). Unfinished
 cards stay yellow with „Nebaigta“ and keep the button.
+
+A **two-subject day** (more than one set, e.g. L's reading + maths) shows one
+line per subject instead of the single button or result: a done subject is a
+green „✓ Lietuvių k. — 10/11“ line, an unfinished one is a „Matematika →“
+button that opens that set directly (`?date=…&subject=…`; the trainer skips
+the subject picker). The chip reads „Atlikta 1 iš 2“ as soon as one is done,
+today included; the card turns green only when all are done. `week_status`
+returns the breakdown as `subjects: [{subject,done,correct,scored}]` per day.
 
 ### 8.2 Cache busting and the version string
 
