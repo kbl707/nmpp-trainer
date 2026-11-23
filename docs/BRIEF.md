@@ -1,6 +1,6 @@
 # nmpp-trainer — brief
 
-As of: 2026-11-15. Rewritten in place; history lives in git.
+As of: 2026-11-23. Rewritten in place; history lives in git.
 Entry point for any chat. Read this first, then the last 7 days of
 `docs/ops-log.md`.
 
@@ -54,17 +54,17 @@ All UI copy is Lithuanian; the child has a named diagnosis (SPEC §7).
   incidents and all five of its fixes are live.
 
 ## Numbers that matter
-Read 2026-11-15 from the live DB; "this week" = scheduled 2026-11-09 → 11-14.
+Read 2026-11-23 from the live DB; "this week" = scheduled 2026-11-16 → 11-21.
 | | H | L |
 |---|---|---|
-| Sets completed | 7 / 7 (Fri test done Sat, Sat set Sun morning) | 5 / 10 saved: Thu and Fri none, Wed and Sat maths missing (save bug, fixed c1b5ff3); Wed Lithuanian and maths redone Sun |
-| First-attempt accuracy | 83% (was 68); quick_math 27/27; choice 80% (was 38); equations after the ladder 30/36, Sat 8/8; clock time 6/11; perimeter 3/5 | 80% (was 64); syllable_build 14/16 (was 65%); word_gap 7/8; b/d flash 28/32 trials (misses on slow trials); maths 3/5, 43 − 26 → 23 |
+| Sets completed | 5 / 7: Mon, Tue and Wed all done on Tue 17 Nov, Thu both on Thu; Friday test and Saturday long session not done | 4 / 10: Mon both, Wed Lithuanian (done Thu), Thu both; Tue, Fri and Sat not done |
+| First-attempt accuracy | 73% (was 83); quick_math 10/11; choice 12/18; number_input 36/51. Misses: 6 × 15 → 80, 3 × 85 → 425 (mental two-digit × one-digit); 41 − 8 → 37, 65 − 27 → 45; 17.45–19.00 → 115; the "what first" choice wrong on first tap 3/3; typed the prompt's example 1145 as an answer twice; būtasis dažninis vs kartinis both wrong first | 84% (was 80); Lithuanian 10/11 on each of 3 texts; syllable_build 11/12; word_gap 6/6; b/d flash 14/16 trials (b → d); maths 2/5 on Mon (63 − 38 → 35, 14 min), 4/5 on Thu (3 min) |
 | Reading speed (L) | — | paper sittings 2 and 3 (14 and 15 Nov): photos not received yet; tablet not reported (decision #12) |
-| Friday test | 27/28 in 8.4 min | — |
-| Streak · total stars | 15 · 1657 ⭐ | 1 · 670 ⭐ (reset by the lost saves) |
-| Runway | to 2026-11-21 | to 2026-11-21 |
-- days to NMPP: 106 to reading (2027-03-01), 108 to maths (2027-03-03)
-- H gaps: clock time (durations across the hour, writes times as decimals); final step of word problems (answers the middle result); two-digit mental subtraction slips by 1 or 10 inside equations; Eduka side-from-area 70%. Equations: the method holds since the ladder.
+| Friday test | not done (11-20) | — |
+| Streak · total stars | 19 · 1809 ⭐ | 2 · 755 ⭐ |
+| Runway | to 2026-11-28 | to 2026-11-28 |
+- days to NMPP: 98 to reading (2027-03-01), 100 to maths (2027-03-03)
+- H gaps: mental two-digit × one-digit inside word problems (new this week: multiply tens and ones separately); two-digit subtraction with borrowing; durations longer than an hour; verb tenses (būtasis kartinis / dažninis / būsimasis, the school topic); works in bursts (three sets in one day, none Fri–Sat) and guesses when stuck (final answers 556, 666). Equations: the method holds, the slips are in the subtraction.
 - School: both children attend their previous in-person school through November (its programme is the same, 2–3 units behind); the online school (the main one) resumed 2026-11-09 and runs alongside. Trainer in the evenings. The in-person school's teachers agreed to give the children time for online-school tasks; the advisor prepares the weekly list; after 2026-12-02 online school only, with no gap.
 
 ## Decisions in force
@@ -96,9 +96,9 @@ Read 2026-11-15 from the live DB; "this week" = scheduled 2026-11-09 → 11-14.
 | H's YouTube: long live streams with open chat (3–6 h, Rivals/Fortnite customs) — consider YouTube supervised account / chat off | operator | — | YouTube settings |
 | L's reading baseline: sitting 1 done (Mon 2 Nov, median 12 wcpm); sittings 2 and 3 moved to Sat 14 Nov 11:20 (Ž2, N1, b/d) and Sun 15 Nov 11:20 (Ž3, NŠA); reprint child pages Ž2, N1, Ž3 (arrows); send photos of all marked sheets (decision #12) | operator | 2026-11-15 review | `printables/skaitymo-matavimas-tevams.html` |
 | After the baseline: compute the numbers; the next passages and lists; take `READ-1` to `READ-6` to the operator. Daily parent read started 2026-11-09 as the tablet text read first by the parent | advisor | 2026-11-15 review | `docs/briefs/READ-*.md` |
-| H's Classroom: Unit 6 Test (since 10-09) and the dictation are still not handed in; VU check test due 11-24, Lithuanian dialogues test and craft photos due 12-01 | operator | this week | Classroom |
-| L's Eduka: „Sprendžiame uždavinius“ due 11-10 and „Atimtis iki 100“ due 11-12 not started; „augintiniai“ 0%, e/a 64% | operator | 2026-11-12 | Eduka |
-| L's Classroom new 11-09: English „Workbook praktinės užduotys“ due 11-20; Lithuanian „Gyvūno aprašymas“ due 12-09; H's Eduka maths „Sprendžiame uždavinius“ and „Ar jau moku?“ posted 11-09 | operator / in-person school | 11-20 | Classroom, Eduka |
+| H's Classroom (11-21): English writing task was not handed in by 11-20 and is closed; Unit 6 Test and the dictation „Pati saldžiausia vietelė“ still not handed in; social studies check test due 11-24, maths „Ar jau moku?“ 11-27, Lithuanian dialogues test, art and technology monthly works 12-01 | operator | this week | Classroom |
+| L's Eduka (11-23): 15 tasks open, 5 overdue or due now: „Sprendžiame uždavinius“ (due 11-10, not started), „Ką vaikai pasakojo apie gyvūnus?“ and „Kaip schema pavaizduoti, kiek mažiau?“ (due 11-23), two more due 11-24; sequences, „įdomusis kvadratas“ and the photo texts due 11-30 | operator | this week | Eduka |
+| L's Classroom (11-21): English Workbook overdue since 11-20, Unit 2 test due 11-23, Unit 3 word test 11-30; Lithuanian „Gyvūno aprašymas“ (a wild animal) due 12-09 — the trainer texts „Voverė“ (Tue) and „Ežys“ (Fri) are models; Lithuanian check test Nr. 2 due 12-11; maths check test Nr. 2 due 12-18 | operator | this week | Classroom |
 | Daily mail and Classroom check runs as scheduled task `kids-school-mail-daily` (Mon–Sat 18:00, until 2026-12-01); a weekly list of the online school's Lithuanian, maths and English tasks goes to the in-person school's teachers, who agreed to help | advisor | until 2026-12-01 | scheduled task, scratchpad `nuotolines-mokyklos-savaite-*.md` |
 | L's Classroom: project „Kur aš gyvenu? Mano gyvenamoji vietovė“ (Visuomeninis ugdymas) is overdue since 11-07 and needs a presentation (slides, drawing, photos or video, any form); „Bailusis Liūtas“ reading still open, no deadline. Fizinis test 1 and the Sep–Oct craft photos for Dailė and Technologijos are handed in | operator | this week | Classroom |
 | Save fix live (PR #3, c1b5ff3): a failed save no longer shows 'atlikta' or loses work (kept on the device, retried); two-subject days offer 'Dar liko'. L's 9–14 Nov: Wed and Sat maths, all of Thu and Fri never reached the server; she can redo them from the timetable. Known leftovers: a lost-response retry can insert a duplicate results row (weekly_stats by_day counts raw rows); one chest marker per device | advisor | 2026-11-15 review | `app.js` |
