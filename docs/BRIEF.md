@@ -158,8 +158,8 @@ Which chat does what:
   `h` / `l`) and answers "how is it going?". It never changes the schema,
   RPCs or app code. A content idea that needs a new item type or an app
   change becomes a markdown request, which the operator pastes into the
-  advisor chat. **Calendar events for school tasks** (`HENRIS · už 2 d.: …`,
-  `LILIJA · už 2 d.: …`): the description must contain one line per Eduka
+  advisor chat. **Calendar events for school tasks** (titled with the child's first name in capitals,
+  then ` · už 2 d.: …`): the description must contain one line per Eduka
   task, `eduka:<external_id>` (from `school_topics.external_id`), so the
   daily routine can mark it done (decision #10).
 - **Advisor (Claude Code, this repo)**: app and DB changes, briefs,

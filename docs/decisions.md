@@ -132,7 +132,7 @@ macOS Keychain (service `school-sync`), not in files. The advisor's earlier
 for school-sync: optional, not started.
 
 ## #10 — Calendar task events track Eduka status daily · 2026-10-25 · decided by operator
-Decision: the "HENRIS/LILIJA · už 2 d." calendar events get a stable link to
+Decision: the "<child's first name> · už 2 d." calendar events get a stable link to
 the Eduka task, and a daily Claude routine marks the done ones. Convention:
 every task event's description carries one line per Eduka task,
 `eduka:<external_id>` (the `school_topics.external_id`, e.g.
