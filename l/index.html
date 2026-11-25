@@ -86,7 +86,12 @@ const tabs=document.getElementById('tabs'),mainEl=document.getElementById('main'
 const jsToday=(new Date().getDay()+6)%7; // 0=Pr
 // ISO date (viewer's local calendar) of weekday i of the current week; the trainer's ?date= opens that day's set
 function dayDate(i){const d=new Date();d.setDate(d.getDate()+(i-jsToday));return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-DAYS.forEach((d,i)=>{
+// Builds the tabs and day cards from DATA. Runs again whenever a changed status
+// arrives, so the status code below always starts from clean cards.
+function render(){
+  const was=[...tabs.children].findIndex(x=>x.classList.contains('active'));
+  tabs.textContent='';mainEl.textContent='';
+  DAYS.forEach((d,i)=>{
   const tab=document.createElement('div');tab.className='tab'+(i===jsToday?' today':'');tab.innerHTML=d.short+'<small>'+d.long+'</small>';tab.onclick=()=>show(i);tabs.appendChild(tab);
   const sec=document.createElement('section');sec.className='day';
   const items=DATA[i]||[];
@@ -98,19 +103,39 @@ DAYS.forEach((d,i)=>{
     el.innerHTML=time+name;sec.appendChild(el);
   });
   mainEl.appendChild(sec);
-});
+  });
+  show(was>=0?was:(jsToday<DAYS.length?jsToday:0));
+}
 function show(i){[...tabs.children].forEach((x,k)=>x.classList.toggle('active',k===i));[...mainEl.children].forEach((x,k)=>x.classList.toggle('active',k===i));}
-show(jsToday<DAYS.length?jsToday:0);
+render();
 
 // Per-day status from the trainer's database (aggregates only, via week_status).
 // Silent no-op if config.js / the network is unavailable.
+// Read at load and again on every return to the page (the sets open in another
+// tab, so this page stays open while the child works).
 (function(){
   const cfg=window.NMPP_CONFIG;if(!cfg)return;
   const todayIso=dayDate(jsToday);
   const LABEL={done:'✓ Atlikta',missed:'Praleista',part:'Nebaigta'},MARK={done:'✓',missed:'✗',part:'◐'};
   const SUBJ={lietuviu:'Lietuvių k.',matematika:'Matematika'};
-  fetch(cfg.SUPABASE_URL+'/rest/v1/rpc/week_status',{method:'POST',headers:{apikey:cfg.SUPABASE_ANON_KEY,Authorization:'Bearer '+cfg.SUPABASE_ANON_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_learner:'l'})})
+  let busy=false,lastAt=0,lastKey=null,applied=false;
+  function refresh(){
+  // left open overnight: the week and "today" have moved, so start over
+  // (not while offline: a stale timetable beats the browser's error page)
+  if(dayDate(jsToday)!==todayIso){if(navigator.onLine!==false)location.reload();return;}
+  if(busy||Date.now()-lastAt<3000)return;
+  busy=true;
+  // a request that hangs must not block later returns to the page
+  const ac=new AbortController(),timer=setTimeout(()=>ac.abort(),8000);
+  fetch(cfg.SUPABASE_URL+'/rest/v1/rpc/week_status',{method:'POST',signal:ac.signal,headers:{apikey:cfg.SUPABASE_ANON_KEY,Authorization:'Bearer '+cfg.SUPABASE_ANON_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_learner:'l'})})
     .then(r=>{if(!r.ok)throw 0;return r.json();}).then(rows=>{
+      // only a successful read starts the 3 s pause, so a failed one is retried
+      // on the very next return
+      lastAt=Date.now();
+      // nothing new: leave the page as it is
+      const key=JSON.stringify(rows);if(key===lastKey)return;
+      if(applied)render();
+      applied=true;
       const byDate={};(rows||[]).forEach(r=>{byDate[r.date]=r;});
       DAYS.forEach((d,i)=>{
         const date=dayDate(i),r=byDate[date];
@@ -151,7 +176,15 @@ show(jsToday<DAYS.length?jsToday:0);
           }
         });
       });
-    }).catch(()=>{});
+      // remembered only once fully applied; if the code above throws, the next
+      // read rebuilds the cards and tries again
+      lastKey=key;
+    }).catch(()=>{}).then(()=>{clearTimeout(timer);busy=false;});
+  }
+  refresh();
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refresh();});
+  window.addEventListener('focus',refresh);
+  window.addEventListener('pageshow',e=>{if(e.persisted)refresh();});
 })();
 </script>
 </body>
