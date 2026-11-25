@@ -189,3 +189,24 @@ Verdict / revisit: three sittings scored by the 2026-11-08 review. About 2 Jan
 passage drift and scoring first, then change the plan; +12 or more, continue. Talk to
 the teacher or school specialist any time a parent is worried: no threshold is needed.
 Status: OPEN
+
+## #13 — School work reaches the operator in one daily email, Classroom in full · 2026-11-25 · designed by advisor at the operator's request
+Decision: the operator learns about open school work from one daily email and
+nowhere else.
+- The email lists every open Classroom assignment for H and L in full, every day,
+  not only what is new: overdue, this week, next week, later, no deadline; with the
+  class, the due date and a note where late work is no longer accepted. Items first
+  seen since the previous email are marked as new. Eduka stays in the same email.
+- Zero means zero: the subject line counts Classroom and Eduka. If Classroom was not
+  read since the previous email, the subject says so instead of showing a count.
+- Every read checks itself: the class-by-class total must equal Classroom's own
+  counters on „Reikia atlikti“ plus „Trūksta“; a mismatch is printed in the email.
+- Chat reports, BRIEF rows and the ops log are records, not notifications.
+- The daily check `kids-school-mail-daily` has no end date (operator, 2026-11-25).
+Why: on 2026-11-25 the email, built from Eduka only since Classroom was removed
+from school-sync, said „H: 0 neatlikta“ while H had 12 open Classroom assignments
+and L had 8. The daily Chrome check had read them, but its report went to a chat
+the operator does not open, so a new English test posted on 11-24 never reached him.
+Verdict / revisit: the operator compares the new email with Classroom on two days
+in its first week. Build: school-sync PR from the `classroom-in-digest` session.
+Status: OPEN
