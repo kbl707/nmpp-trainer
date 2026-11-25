@@ -617,6 +617,15 @@ with a red NMPP tag; a missed day that does have a set keeps its „Atidaryti
 užduotis →“ link, which opens the catch-up (§8). If
 `config.js` or the request fails the pages simply show no status.
 
+The status is read when the page loads and again each time the page comes back
+into view (`visibilitychange`, window `focus`, `pageshow` from the back/forward
+cache), at most once every 3 seconds: the sets open in another tab, so the
+timetable stays open while the child works and would otherwise keep showing
+the old state until a manual reload. If the answer differs from the last one,
+the cards are rebuilt from the timetable data and the status is applied again
+(the open day tab is kept); if it is the same, nothing is touched. A page left
+open past midnight reloads itself on return, because „today“ has moved.
+
 A **done** card turns light green with a green NMPP tag, and the „Atidaryti
 užduotis →“ button is replaced by „Rezultatas: 15/16“ (omitted for sets with
 nothing auto-checked, e.g. a printable — the card is just green). Unfinished
