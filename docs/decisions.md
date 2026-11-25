@@ -210,3 +210,8 @@ the operator does not open, so a new English test posted on 11-24 never reached 
 Verdict / revisit: the operator compares the new email with Classroom on two days
 in its first week. Build: school-sync PR from the `classroom-in-digest` session.
 Status: OPEN
+Amendment 2026-11-25 (operator's question the same day): the email also carries a
+section „this week from the teachers“ per child and subject, with the materials
+and announcements of the current week and what they ask the child to do (pages to
+read, exercises without a hand-in, crafts). Classroom keeps no done / not done
+state for these, so they are listed, not counted.
