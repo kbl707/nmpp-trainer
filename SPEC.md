@@ -619,12 +619,15 @@ užduotis →“ link, which opens the catch-up (§8). If
 
 The status is read when the page loads and again each time the page comes back
 into view (`visibilitychange`, window `focus`, `pageshow` from the back/forward
-cache), at most once every 3 seconds: the sets open in another tab, so the
+cache), never two requests at once and not within 3 seconds of the last
+successful read (a failed read is retried on the next return; a request is
+given up after 8 seconds): the sets open in another tab, so the
 timetable stays open while the child works and would otherwise keep showing
 the old state until a manual reload. If the answer differs from the last one,
 the cards are rebuilt from the timetable data and the status is applied again
 (the open day tab is kept); if it is the same, nothing is touched. A page left
-open past midnight reloads itself on return, because „today“ has moved.
+open past midnight reloads itself on return, because „today“ has moved —
+unless the device is offline or `config.js` is missing, when it stays as it is.
 
 A **done** card turns light green with a green NMPP tag, and the „Atidaryti
 užduotis →“ button is replaced by „Rezultatas: 15/16“ (omitted for sets with

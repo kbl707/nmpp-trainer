@@ -118,18 +118,24 @@ render();
   const todayIso=dayDate(jsToday);
   const LABEL={done:'✓ Atlikta',missed:'Praleista',part:'Nebaigta'},MARK={done:'✓',missed:'✗',part:'◐'};
   const SUBJ={lietuviu:'Lietuvių k.',matematika:'Matematika'};
-  let busy=false,lastAt=0,lastKey=null;
+  let busy=false,lastAt=0,lastKey=null,applied=false;
   function refresh(){
   // left open overnight: the week and "today" have moved, so start over
-  if(dayDate(jsToday)!==todayIso){location.reload();return;}
+  // (not while offline: a stale timetable beats the browser's error page)
+  if(dayDate(jsToday)!==todayIso){if(navigator.onLine!==false)location.reload();return;}
   if(busy||Date.now()-lastAt<3000)return;
   busy=true;
-  fetch(cfg.SUPABASE_URL+'/rest/v1/rpc/week_status',{method:'POST',headers:{apikey:cfg.SUPABASE_ANON_KEY,Authorization:'Bearer '+cfg.SUPABASE_ANON_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_learner:'l'})})
+  // a request that hangs must not block later returns to the page
+  const ac=new AbortController(),timer=setTimeout(()=>ac.abort(),8000);
+  fetch(cfg.SUPABASE_URL+'/rest/v1/rpc/week_status',{method:'POST',signal:ac.signal,headers:{apikey:cfg.SUPABASE_ANON_KEY,Authorization:'Bearer '+cfg.SUPABASE_ANON_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_learner:'l'})})
     .then(r=>{if(!r.ok)throw 0;return r.json();}).then(rows=>{
+      // only a successful read starts the 3 s pause, so a failed one is retried
+      // on the very next return
+      lastAt=Date.now();
       // nothing new: leave the page as it is
       const key=JSON.stringify(rows);if(key===lastKey)return;
-      if(lastKey!==null)render();
-      lastKey=key;
+      if(applied)render();
+      applied=true;
       const byDate={};(rows||[]).forEach(r=>{byDate[r.date]=r;});
       DAYS.forEach((d,i)=>{
         const date=dayDate(i),r=byDate[date];
@@ -170,7 +176,10 @@ render();
           }
         });
       });
-    }).catch(()=>{}).then(()=>{busy=false;lastAt=Date.now();});
+      // remembered only once fully applied; if the code above throws, the next
+      // read rebuilds the cards and tries again
+      lastKey=key;
+    }).catch(()=>{}).then(()=>{clearTimeout(timer);busy=false;});
   }
   refresh();
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refresh();});
