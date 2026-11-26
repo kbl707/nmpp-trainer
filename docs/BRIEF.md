@@ -1,6 +1,6 @@
 # nmpp-trainer — brief
 
-As of: 2026-11-25. Rewritten in place; history lives in git.
+As of: 2026-11-26. Rewritten in place; history lives in git.
 Entry point for any chat. Read this first, then the last 7 days of
 `docs/ops-log.md`.
 
@@ -90,7 +90,9 @@ Read 2026-11-23 from the live DB; "this week" = scheduled 2026-11-16 → 11-21.
 - #12 L: reading speed comes only from parent-timed reads on paper; tablet taps
   are never reported as speed; baseline in the break, then the research plan (2026-11-01)
 - #13 School work reaches the operator in one daily email with Classroom in
-  full; zero means zero; the daily Classroom check has no end date (2026-11-25)
+  full, sent in the evening after the Classroom check, as a short to-do list;
+  zero means zero; the daily Classroom check has no end date (2026-11-25,
+  evening confirmed 2026-11-26)
 
 ## Open items
 | Item | Owner | Due | Where |
@@ -98,11 +100,11 @@ Read 2026-11-23 from the live DB; "this week" = scheduled 2026-11-16 → 11-21.
 | H's YouTube: long live streams with open chat (3–6 h, Rivals/Fortnite customs) — consider YouTube supervised account / chat off | operator | — | YouTube settings |
 | L's reading baseline: sitting 1 done (Mon 2 Nov, median 12 wcpm); sittings 2 and 3 moved to Sat 14 Nov 11:20 (Ž2, N1, b/d) and Sun 15 Nov 11:20 (Ž3, NŠA); reprint child pages Ž2, N1, Ž3 (arrows); send photos of all marked sheets (decision #12) | operator | 2026-11-15 review | `printables/skaitymo-matavimas-tevams.html` |
 | After the baseline: compute the numbers; the next passages and lists; take `READ-1` to `READ-6` to the operator. Daily parent read started 2026-11-09 as the tablet text read first by the parent | advisor | 2026-11-15 review | `docs/briefs/READ-*.md` |
-| H's Classroom (11-25, all classes read, 12 open = Classroom's own counters): maths „Ar jau moku?“ due 11-27; Lithuanian dialogues check test, art and technology November works due 12-01; English „Progress test 2“ due 12-07 (posted 11-24, done on a worksheet site, answers sent to the teacher, not accepted late); social studies business plan due 12-08; no deadline: English Unit 6 Test, dictation „Pati saldžiausia vietelė“, Lithuanian chapter check test (posted 11-22); overdue: English writing task (11-20, closed), art September works (10-01), a notice-board greeting (09-03). Social studies check test Nr. 2 (due 11-24) shows as handed in | operator | this week | Classroom |
+| H's Classroom (11-25 evening, all classes read, 11 open = Classroom's own counters): maths „Ar jau moku?“ due 11-27; Lithuanian dialogues check test, art and technology November works due 12-01; social studies business plan due 12-08; no deadline: English Unit 6 Test, dictation „Pati saldžiausia vietelė“, Lithuanian chapter check test (posted 11-22); overdue: English writing task (11-20, closed), art September works (10-01), a notice-board greeting (09-03). Social studies check test Nr. 2 (due 11-24) and English „Progress test 2“ (handed in 11-25) show as handed in | operator | this week | Classroom |
 | L's Eduka (11-23): 15 tasks open, 5 overdue or due now: „Sprendžiame uždavinius“ (due 11-10, not started), „Ką vaikai pasakojo apie gyvūnus?“ and „Kaip schema pavaizduoti, kiek mažiau?“ (due 11-23), two more due 11-24; sequences, „įdomusis kvadratas“ and the photo texts due 11-30 | operator | this week | Eduka |
 | L's Classroom (11-25, all classes read, 8 open = Classroom's own counters): English Unit 3 word test due 11-30 and body-parts test due 12-07; Lithuanian „Gyvūno aprašymas“ (a wild animal) due 12-09 — the trainer texts „Voverė“ and „Ežys“ are models; Lithuanian check test Nr. 2 due 12-11; maths check test Nr. 2 due 12-18; no deadline: reading „Bailusis Liūtas“; overdue: English Unit 2 test (11-23, closed), project „Kur aš gyvenu? Mano gyvenamoji vietovė“ (11-07, needs a presentation in any form) | operator | this week | Classroom |
 | Daily mail and Classroom check runs as scheduled task `kids-school-mail-daily` (Mon–Sat 18:00, no end date since 2026-11-25); a weekly list of the online school's Lithuanian, maths and English tasks goes to the in-person school's teachers, who agreed to help | advisor | ongoing | scheduled task, scratchpad `nuotolines-mokyklos-savaite-*.md` |
-| New school email (decision #13): Classroom in full for both children, zero means zero, self-check against Classroom's counters; until it is live the email still shows Eduka only | advisor, session `classroom-in-digest` | 2026-11-28 | school-sync PR, `kids-school-mail-daily` |
+| New school email (decision #13): built in school-sync PR #3 (evening, short to-do list, Classroom in full, lesson posts, self-check), not merged, not installed. Independent review 2026-11-26 (comment on the PR): three fixes before merge — the fallback email depends on the Mac's time zone, lesson lines lose page numbers, Eduka task names are dropped from lesson lines; then a new dry run compared with step 2d's output, merge, install, one live evening email. Until then the 07:00 email shows Eduka only and the 18:00 check sends a stopgap email to the operator | advisor, session `classroom-in-digest` | 2026-11-28 | school-sync PR #3, `kids-school-mail-daily` |
 | Sweep 2026-11-25 (code review, PR #6): 14 findings, none against PR #5 worth a revert. To turn into FIX briefs, one PR each: a future-day or today's load throws away a half-done set (findings 2, 3); stars, streak and chest lost when the credit call fails once (4); reload resets the attempt counter or records an item twice (5, 6); timetable refresh gaps (8–10); the site deploy also publishes `docs/`, `supabase/`, `seed/` (improvement 8). Fill in the sweep's 'Advisor decisions' section | advisor | 2026-11-29 review | `docs/sweeps/2026-11-25-code-review.md` |
 | Public history still holds the children's first names (4 commits, also reachable through GitHub's pull-request refs, so a force-push alone does not remove them). Operator approved removing them on 2026-11-25, after open PRs are merged and the `classroom-in-digest` session is finished. Route: the repo swap in `docs/briefs/RUN-fresh-history.md` (old repo renamed and made private, new public repo with one clean commit), each GitHub step confirmed by the operator | advisor + operator | after the school-email work lands | `docs/briefs/RUN-fresh-history.md` |
 | Save fix live (PR #3, c1b5ff3): a failed save no longer shows 'atlikta' or loses work (kept on the device, retried); two-subject days offer 'Dar liko'. L's 9–14 Nov: Wed and Sat maths, all of Thu and Fri never reached the server; she can redo them from the timetable. Known leftovers: a lost-response retry can insert a duplicate results row (weekly_stats by_day counts raw rows); one chest marker per device | advisor | 2026-11-15 review | `app.js` |
@@ -120,7 +122,7 @@ Read 2026-11-23 from the live DB; "this week" = scheduled 2026-11-16 → 11-21.
 | Add first-attempt accuracy by type + L WPM to Numbers | advisor | next weekly review (2026-10-25) | this file |
 | First school-sync day on the new schedule: check the logs for a retry or catch-up line (WARN … retrying once, or 'catch-up run') | advisor | Sat 2026-10-24 evening | `~/Library/Logs/school-sync/` |
 | A flush insert that always fails (e.g. a deleted set) now retries on every load (review of PR #7, low) | advisor | next sweep | `games.js` `flushAbandoned` |
-| school-sync: the digest dry-run test has been failing on master since 2063da0 (pre-existing) | advisor | next sweep | school-sync `test/pipeline.test.mjs` |
+| school-sync: two tests fail on master (the digest dry-run test since 2063da0 and the focus test: real clock with October fixtures), confirmed 2026-11-26; the repo has no CI. The review of PR #3 asks to fix both | advisor | with PR #3 | school-sync `test/pipeline.test.mjs` |
 | `weekly_reviews` has no schema in any repo (the `school_*` tables are in school-sync `supabase/school.sql`) | advisor | with ANON-ids-site | `supabase/` |
 | `progress.streak` never decays after missed days (it's only recomputed on completion), and the interrupted-only path returns the stored streak (review of PR #5, low) | advisor | next sweep | `record_progress` |
 | Timetables `/h` `/l` need the `?date=` + `week_status` tweak if the external generator is re-run | operator | on regen | README "Pages" |

@@ -215,3 +215,8 @@ section „this week from the teachers“ per child and subject, with the materi
 and announcements of the current week and what they ask the child to do (pages to
 read, exercises without a hand-in, crafts). Classroom keeps no done / not done
 state for these, so they are listed, not counted.
+Amendment 2026-11-26 (operator): the one daily email goes in the evening, right
+after the daily Classroom check. There is no morning email. Design that follows
+(advisor): if the check did not run, an email still goes that evening and says
+Classroom was not checked. Operator, 2026-11-25: the email is a short to-do list
+per child (to hand in, this week's lessons, Eduka), not a report.
