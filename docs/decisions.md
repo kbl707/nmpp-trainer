@@ -220,3 +220,6 @@ after the daily Classroom check. There is no morning email. Design that follows
 (advisor): if the check did not run, an email still goes that evening and says
 Classroom was not checked. Operator, 2026-11-25: the email is a short to-do list
 per child (to hand in, this week's lessons, Eduka), not a report.
+Amendment 2026-11-26 (operator, second): the date in the email's subject is the
+date on the Mac's own clock; deadlines (overdue, this week, next week) are judged
+on the school's Vilnius date.
