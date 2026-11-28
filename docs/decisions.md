@@ -223,3 +223,6 @@ per child (to hand in, this week's lessons, Eduka), not a report.
 Amendment 2026-11-26 (operator, second): the date in the email's subject is the
 date on the Mac's own clock; deadlines (overdue, this week, next week) are judged
 on the school's Vilnius date.
+Amendment 2026-11-28 (operator): the lesson block keeps every subject. The
+advisor asked whether to cut it to Lithuanian, maths and English after the first
+live email (10 lines for H, 8 for L); the answer was "Keep all subjects".
